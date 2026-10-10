@@ -14,7 +14,6 @@ export type RunRecord = {
   createdAt: string;
   modelId: string;
   modelLabel: string;
-  demo: boolean;
   loadMs: number;
   ttftMs: number;
   decodeTokPerS: number;

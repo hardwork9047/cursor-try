@@ -82,7 +82,6 @@ export async function runBenchmark(args: {
       createdAt: new Date().toISOString(),
       modelId: args.model.id,
       modelLabel: args.model.label,
-      demo: false,
       loadMs: loaded.loadMs,
       gpu: joinGpu(args.gpuName, loaded.gpuVendor),
       prompts: parts,

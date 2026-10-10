@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { explainFailure, runBenchmark } from "./benchmark";
 import { MAX_TOKENS, PAGE_URL, TEMPERATURE } from "./config";
-import { playDemo } from "./demoData";
 import { detectGpu } from "./gpu";
 import { formatCycle, formatLoad, formatMs, formatTok, formatWhen } from "./format";
 import { MODELS, type ModelOption } from "./models";
 import { activePrompts, FIXED_PROMPTS } from "./prompts";
 import { renderShareCard } from "./shareCard";
-import { clearHistory, isDemo, loadHistory, saveRun } from "./storage";
+import { clearHistory, loadHistory, saveRun } from "./storage";
 import type { BenchProgress, GpuStatus, RunRecord } from "./types";
 
 function latestFor(runs: RunRecord[], modelId: string): RunRecord | undefined {
@@ -40,16 +39,6 @@ function BarChart({
       role="img"
       aria-label="機種別のスループット"
     >
-      <pattern
-        id="sample-hatch"
-        width="5"
-        height="5"
-        patternUnits="userSpaceOnUse"
-        patternTransform="rotate(40)"
-      >
-        <rect width="5" height="5" fill="#e2a30b" />
-        <line x1="0" y1="0" x2="0" y2="5" stroke="#1a1814" strokeWidth="1.4" />
-      </pattern>
       {MODELS.map((model, index) => {
         const run = latestFor(runs, model.id);
         const value = run?.decodeTokPerS ?? 0;
@@ -65,7 +54,7 @@ function BarChart({
               y={y}
               width={slot - 28}
               height={barHeight}
-              fill={run ? (run.demo ? "url(#sample-hatch)" : "#1d4f3a") : "#d9d0c2"}
+              fill={run ? "#1d4f3a" : "#d9d0c2"}
               stroke={selected || latest ? "#1a1814" : "none"}
               strokeWidth={selected || latest ? 1.5 : 0}
             />
@@ -109,7 +98,7 @@ export function App() {
     [history],
   );
   const preview = result ?? recent[0] ?? null;
-  const blocked = !isDemo && !gpu.webgpu;
+  const blocked = !gpu.webgpu;
 
   useEffect(() => {
     let cancelled = false;
@@ -117,7 +106,7 @@ export function App() {
       if (cancelled) return;
       setGpu(status);
       setIsolated(window.crossOriginIsolated);
-      setHistory(loadHistory(isDemo));
+      setHistory(loadHistory());
       setReady(true);
     });
     return () => {
@@ -158,22 +147,15 @@ export function App() {
     abortRef.current = controller;
     const onProgress = (next: BenchProgress) => setProgress(next);
     try {
-      const record = isDemo
-        ? await playDemo({
-            model,
-            prompts,
-            signal: controller.signal,
-            onProgress,
-          })
-        : await runBenchmark({
-            model,
-            prompts,
-            gpuName: gpu.name,
-            signal: controller.signal,
-            onProgress,
-          });
+      const record = await runBenchmark({
+        model,
+        prompts,
+        gpuName: gpu.name,
+        signal: controller.signal,
+        onProgress,
+      });
       setResult(record);
-      setHistory(saveRun(record, isDemo));
+      setHistory(saveRun(record));
       setProgress(null);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
@@ -199,11 +181,7 @@ export function App() {
     link.download = `genba-bench-${preview.modelLabel.replace(/\s+/g, "-")}.png`;
     link.click();
     URL.revokeObjectURL(objectUrl);
-    setExportNote(
-      preview.demo
-        ? "サンプルのPNGを保存しました。数値は実測ではありません。"
-        : "測定カードのPNGを保存しました。",
-    );
+    setExportNote("測定カードのPNGを保存しました。");
   }
 
   if (!ready) {
@@ -215,7 +193,7 @@ export function App() {
   const loadProgress = progress?.kind === "load" ? progress.progress : running ? 1 : 0;
 
   return (
-    <div className="app" data-testid="app-ready" data-demo={isDemo ? "1" : "0"}>
+    <div className="app" data-testid="app-ready">
       <header className="mast">
         <div>
           <p className="kicker">GENBA BENCH · 現場の数字</p>
@@ -232,19 +210,10 @@ export function App() {
             分離 <b>{isolated ? "済" : "未"}</b>
           </span>
           <span className="chip">
-            モード <b>{isDemo ? "サンプル再生" : "実測"}</b>
-          </span>
-          <span className="chip">
             検出 <b>{gpu.webgpu ? gpu.name : "なし"}</b>
           </span>
         </div>
       </header>
-
-      {isDemo && (
-        <div className="banner" data-testid="demo-banner" role="status">
-          サンプル再生です。表示中の数値・生成文は実測でもモデルの出力でもありません。
-        </div>
-      )}
 
       <section className="jobs" aria-label="作業標準">
         <ol>
@@ -302,9 +271,6 @@ export function App() {
               <p>
                 Chrome または Edge の最新版で、ハードウェアアクセラレーションを有効にして開き直してください。
               </p>
-              <p>
-                <a href={`${import.meta.env.BASE_URL}?demo=1`}>サンプル再生を見る</a>
-              </p>
               {gpu.detail && <p className="note">{gpu.detail}</p>}
             </div>
           ) : (
@@ -316,7 +282,7 @@ export function App() {
               {running ? "中断" : "測定開始"}
             </button>
           )}
-          {!isDemo && gpu.webgpu && !isolated && (
+          {gpu.webgpu && !isolated && (
             <p className="warn">
               スレッド分離がまだ有効ではありません。読込に失敗したら再読み込みしてください。
             </p>
@@ -326,7 +292,7 @@ export function App() {
         <section className="panel" aria-label="測定値">
           <h2>
             02 測定
-            <span>{result ? (result.demo ? "サンプル" : "実測") : "未測定"}</span>
+            <span>{result ? "実測" : "未測定"}</span>
           </h2>
           <div
             className="metrics"
@@ -387,19 +353,13 @@ export function App() {
               kana="設備"
               en="GPU"
               value={result ? result.gpu : gpu.webgpu ? gpu.name : "—"}
-              note={
-                result?.demo
-                  ? "この欄はサンプルです"
-                  : result
-                    ? "測定に使ったアダプタ"
-                    : "検出のみ。測定値ではない"
-              }
+              note={result ? "測定に使ったアダプタ" : "検出のみ。測定値ではない"}
             />
           </div>
           <div className="output">
             <header>
               <span>
-                {isDemo ? "サンプル応答" : "生成テキスト"}
+                生成テキスト
                 {activeTitle ? ` · ${activeTitle}` : ""}
               </span>
               <span>
@@ -421,9 +381,7 @@ export function App() {
                     ? result.prompts
                         .map((prompt) => `【${prompt.title}】\n${prompt.text}`)
                         .join("\n\n")
-                    : isDemo
-                      ? "測定開始で、台本の応答を再生します。"
-                      : "測定開始で、固定の作業標準をこのGPUに流します。")}
+                    : "測定開始で、固定の作業標準をこのGPUに流します。")}
             </pre>
           </div>
           {error && (
@@ -445,8 +403,8 @@ export function App() {
           />
           <p className="legend">
             <span>
-              <i className={isDemo ? "swatch" : "swatch real"} />
-              {isDemo ? "棒はサンプル" : "直近の実測"}
+              <i className="swatch real" />
+              直近の実測
             </span>
             <span>機種ごとの最新</span>
           </p>
@@ -455,14 +413,12 @@ export function App() {
               <img
                 data-testid="share-card"
                 src={cardUrl}
-                alt={
-                  preview?.demo
-                    ? "サンプルの共有カード。実測ではありません"
-                    : "測定結果の共有カード"
-                }
+                alt="測定結果の共有カード"
               />
             ) : (
-              <div className="card-placeholder">カードを作っています…</div>
+              <div className="card-placeholder">
+                {preview ? "カードを作っています…" : "測定するとカードが出ます"}
+              </div>
             )}
           </div>
           <div className="card-actions">
@@ -486,9 +442,7 @@ export function App() {
                 <span className="when">{formatWhen(run.createdAt)}</span>
                 <span className="name">{run.modelLabel}</span>
                 <span className="rate">{formatTok(run.decodeTokPerS)}</span>
-                <span className={run.demo ? "badge demo" : "badge real"}>
-                  {run.demo ? "サンプル" : "実測"}
-                </span>
+                <span className="badge real">実測</span>
               </li>
             ))}
           </ol>
@@ -496,7 +450,7 @@ export function App() {
             className="ghost"
             style={{ alignSelf: "flex-start", marginTop: 6 }}
             onClick={() => {
-              setHistory(clearHistory(isDemo));
+              setHistory(clearHistory());
               setResult(null);
             }}
           >
@@ -505,11 +459,7 @@ export function App() {
         </section>
       </main>
       <footer className="foot">
-        <span>
-          {isDemo
-            ? "このページの数値は録画用サンプルです。"
-            : "プロンプトはサーバへ送りません。"}
-        </span>
+        <span>表示するのは、このブラウザで測った数値だけです。プロンプトはサーバへ送りません。</span>
         <a href={PAGE_URL}>{PAGE_URL.replace("https://", "")}</a>
       </footer>
     </div>

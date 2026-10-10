@@ -1,44 +1,51 @@
-import { buildSeedHistory } from "./demoData";
 import type { RunRecord } from "./types";
 
 const REAL_KEY = "genba-bench-history-v1";
-const DEMO_KEY = "genba-bench-demo-history-v1";
+const LEGACY_DEMO_KEY = "genba-bench-demo-history-v1";
 const LIMIT = 24;
 
-const params = new URLSearchParams(window.location.search);
-export const isDemo = params.get("demo") === "1";
-
-if (isDemo && params.get("fresh") === "1") {
-  localStorage.removeItem(DEMO_KEY);
+function isMeasuredRun(value: unknown): value is RunRecord {
+  if (!value || typeof value !== "object") return false;
+  const run = value as RunRecord & { demo?: boolean };
+  if (run.demo === true) return false;
+  return (
+    typeof run.id === "string" &&
+    typeof run.createdAt === "string" &&
+    typeof run.modelId === "string" &&
+    typeof run.modelLabel === "string" &&
+    typeof run.loadMs === "number" &&
+    typeof run.ttftMs === "number" &&
+    typeof run.decodeTokPerS === "number" &&
+    typeof run.gpu === "string" &&
+    Array.isArray(run.prompts)
+  );
 }
 
-function keyFor(demo: boolean): string {
-  return demo ? DEMO_KEY : REAL_KEY;
-}
-
-export function loadHistory(demo: boolean): RunRecord[] {
-  const raw = localStorage.getItem(keyFor(demo));
-  if (!raw) {
-    if (!demo) return [];
-    const seed = buildSeedHistory();
-    localStorage.setItem(DEMO_KEY, JSON.stringify(seed));
-    return seed;
-  }
+export function loadHistory(): RunRecord[] {
+  localStorage.removeItem(LEGACY_DEMO_KEY);
+  const raw = localStorage.getItem(REAL_KEY);
+  if (!raw) return [];
   try {
-    const parsed = JSON.parse(raw) as RunRecord[];
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    const measured = parsed.filter(isMeasuredRun);
+    if (measured.length !== parsed.length) {
+      localStorage.setItem(REAL_KEY, JSON.stringify(measured));
+    }
+    return measured;
   } catch {
     return [];
   }
 }
 
-export function saveRun(record: RunRecord, demo: boolean): RunRecord[] {
-  const next = [record, ...loadHistory(demo)].slice(0, LIMIT);
-  localStorage.setItem(keyFor(demo), JSON.stringify(next));
+export function saveRun(record: RunRecord): RunRecord[] {
+  const next = [record, ...loadHistory()].slice(0, LIMIT);
+  localStorage.setItem(REAL_KEY, JSON.stringify(next));
   return next;
 }
 
-export function clearHistory(demo: boolean): RunRecord[] {
-  localStorage.removeItem(keyFor(demo));
-  return loadHistory(demo);
+export function clearHistory(): RunRecord[] {
+  localStorage.removeItem(REAL_KEY);
+  localStorage.removeItem(LEGACY_DEMO_KEY);
+  return [];
 }

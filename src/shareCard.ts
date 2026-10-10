@@ -48,9 +48,9 @@ export async function renderShareCard(run: RunRecord): Promise<Blob> {
   ctx.fillText("ブラウザ内ローカルLLMベンチ", 196, 58);
 
   ctx.textAlign = "right";
-  ctx.fillStyle = run.demo ? "#e24b3b" : "#8fd0a8";
+  ctx.fillStyle = "#8fd0a8";
   ctx.font = "700 18px 'IBM Plex Sans JP'";
-  ctx.fillText(run.demo ? "サンプル" : "実測", WIDTH - 48, 58);
+  ctx.fillText("実測", WIDTH - 48, 58);
   ctx.textAlign = "left";
 
   ctx.fillStyle = "#f7f3ea";
@@ -123,20 +123,6 @@ export async function renderShareCard(run: RunRecord): Promise<Blob> {
     48,
     656,
   );
-
-  if (run.demo) {
-    ctx.save();
-    ctx.translate(990, 148);
-    ctx.rotate(-0.22);
-    ctx.strokeStyle = "#e24b3b";
-    ctx.lineWidth = 4;
-    ctx.strokeRect(-118, -32, 236, 64);
-    ctx.fillStyle = "#e24b3b";
-    ctx.font = "700 28px 'IBM Plex Sans JP'";
-    ctx.textAlign = "center";
-    ctx.fillText("サンプル", 0, 8);
-    ctx.restore();
-  }
 
   const blob = await new Promise<Blob | null>((resolve) => {
     canvas.toBlob((value) => resolve(value), "image/png");

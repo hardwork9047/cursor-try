@@ -98,16 +98,6 @@ button:disabled { cursor: not-allowed; }
 
 .chip b { color: var(--yellow); font-weight: 500; }
 
-.banner {
-  background: var(--red);
-  color: #fff8f4;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  padding: 5px 12px;
-}
-
 .jobs {
   display: flex;
   gap: 8px;
@@ -460,7 +450,6 @@ button:disabled { cursor: not-allowed; }
   letter-spacing: 0.04em;
 }
 .badge.real { color: var(--green); }
-.badge.demo { color: var(--red); }
 
 .foot {
   display: flex;
