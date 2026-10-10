@@ -1,0 +1,10 @@
+node_modules
+dist
+.vite
+*.local
+playwright-report
+test-results
+artifacts
+.DS_Store
+*.mp4
+*.webm
