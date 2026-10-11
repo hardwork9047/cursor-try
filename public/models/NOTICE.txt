@@ -1,0 +1,15 @@
+YOLO26n and YOLO26s object-detection weights
+Copyright (c) Ultralytics
+
+These ONNX files were exported from the official checkpoints
+yolo26n.pt and yolo26s.pt (Ultralytics assets release v8.4.0,
+https://github.com/ultralytics/assets/releases/download/v8.4.0/).
+Export: ONNX opset 17, imgsz 640, simplified, one-to-many detection
+head. Output shape (1, 84, 8400).
+
+License: GNU Affero General Public License v3.0
+See LICENSE-AGPL-3.0.txt in this directory and
+https://github.com/ultralytics/ultralytics
+
+YOLO26 was released on 14 January 2026. YOLO27 was not generally
+available when these files were added.

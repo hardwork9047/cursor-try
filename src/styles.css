@@ -454,6 +454,7 @@ button:disabled { cursor: not-allowed; }
 .foot {
   display: flex;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   padding: 0 16px 8px;
   color: var(--muted);
@@ -469,6 +470,186 @@ button:disabled { cursor: not-allowed; }
   font-size: 18px;
 }
 
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 16px;
+  background: #12110e;
+  color: #f4efe4;
+  font-size: 12px;
+}
+
+.topbar a { color: inherit; text-decoration: none; }
+.topbar nav { display: flex; gap: 14px; }
+.topbar a[aria-current="page"] { color: var(--yellow); }
+.brand { font-weight: 700; letter-spacing: 0.08em; }
+.home .mast h1 { font-size: 36px; }
+
+.home-wrap {
+  flex: 1;
+  overflow: auto;
+  padding: 28px 16px 12px;
+}
+
+.entries {
+  max-width: 880px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 220px;
+  padding: 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-top: 6px solid var(--yellow);
+  color: inherit;
+  text-decoration: none;
+}
+
+.entry strong { font-size: 22px; letter-spacing: -0.03em; }
+.entry p { margin: 0; line-height: 1.55; font-size: 14px; }
+.entry .go { margin-top: auto; font-weight: 700; font-size: 13px; }
+
+.home-note {
+  max-width: 880px;
+  margin: 14px auto 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+.file { display: inline-flex; align-items: center; }
+.file input { display: none; }
+.file.is-disabled { opacity: 0.45; pointer-events: none; }
+
+.slider {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 48px;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+
+.slider input { width: 100%; accent-color: var(--green); }
+.slider b {
+  font-family: var(--mono);
+  font-weight: 500;
+  text-align: right;
+}
+
+.count-box {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #e2d8c6;
+}
+
+.check {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.seg { display: flex; gap: 6px; margin: 6px 0; }
+.seg button {
+  flex: 1;
+  background: var(--card);
+  border: 1px solid var(--line);
+  padding: 5px 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.seg button[aria-pressed="true"] {
+  background: var(--ink);
+  color: #f4efe4;
+}
+
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 280px;
+  background: #12110e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.stage canvas {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  max-height: 62vh;
+  width: auto;
+  height: auto;
+}
+
+.media-sink {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.stage-empty {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding: 16px;
+  color: #f4efe4;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.status-line {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+.subhead { margin-top: 12px; }
+
+.counts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.counts li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid #e2d8c6;
+  padding: 3px 0;
+  font-size: 13px;
+}
+
+.counts b { font-family: var(--mono); font-weight: 500; }
+.muted-row { color: var(--muted); }
+
+.gpu-row { margin-top: 6px; }
+
+.card-preview {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  border: 1px solid var(--line);
+}
+
 @media (max-width: 1100px) {
   html, body, #root, .app { height: auto; }
   .board { grid-template-columns: 1fr; }
@@ -477,6 +658,9 @@ button:disabled { cursor: not-allowed; }
   .mast { flex-direction: column; align-items: flex-start; }
   .chips { justify-content: flex-start; max-width: none; }
   .custom input { width: min(240px, 72vw); }
+  .entries { grid-template-columns: 1fr; }
+  .home-wrap { padding-top: 16px; }
+  .stage canvas { max-height: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

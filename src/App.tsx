@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { SiteBar } from "./SiteBar";
 import { explainFailure, runBenchmark } from "./benchmark";
 import { MAX_TOKENS, PAGE_URL, TEMPERATURE } from "./config";
 import { detectGpu } from "./gpu";
@@ -194,6 +195,7 @@ export function App() {
 
   return (
     <div className="app" data-testid="app-ready">
+      <SiteBar current="llm" />
       <header className="mast">
         <div>
           <p className="kicker">GENBA BENCH · 現場の数字</p>
