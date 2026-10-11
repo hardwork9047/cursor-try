@@ -621,6 +621,15 @@ button:disabled { cursor: not-allowed; }
   font-size: 13px;
 }
 
+.safety-alert {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  background: #8f1d18;
+  color: #fff7f4;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .subhead { margin-top: 12px; }
 
 .counts {

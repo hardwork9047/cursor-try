@@ -10,16 +10,18 @@ export function drawScene(
   srcH: number,
   boxes: Box[],
   lineY: number | null,
+  names: (id: number) => string = className,
+  hot: ReadonlySet<number> | null = null,
 ) {
   ctx.clearRect(0, 0, srcW, srcH);
   ctx.drawImage(image, 0, 0, srcW, srcH);
   const weight = Math.max(2, srcW / 480);
-  for (const box of boxes) {
-    const color = STROKES[box.classId % STROKES.length];
+  boxes.forEach((box, index) => {
+    const color = hot?.has(index) ? "#ff5a4a" : STROKES[box.classId % STROKES.length];
     ctx.lineWidth = weight;
     ctx.strokeStyle = color;
     ctx.strokeRect(box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1);
-    const label = `${className(box.classId)} ${(box.score * 100).toFixed(0)}%`;
+    const label = `${names(box.classId)} ${(box.score * 100).toFixed(0)}%`;
     const font = Math.max(14, Math.round(srcW / 52));
     ctx.font = `700 ${font}px "IBM Plex Sans JP", sans-serif`;
     const pad = Math.round(font * 0.28);
@@ -30,7 +32,7 @@ export function drawScene(
     ctx.fillRect(box.x1, top, textW + pad * 2, boxH);
     ctx.fillStyle = color;
     ctx.fillText(label, box.x1 + pad, top + font + pad * 0.15);
-  }
+  });
   if (lineY == null) return;
   ctx.save();
   ctx.lineWidth = Math.max(2, weight);

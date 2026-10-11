@@ -86,3 +86,13 @@ export const COCO_CLASS_COUNT: 80 = COCO_NAMES.length;
 export function className(id: number): string {
   return COCO_NAMES[id] ?? `分類${id}`;
 }
+
+/** Baked YOLOE-26 prompts: forklift, pallet, cardboard box, person. */
+export const WAREHOUSE_NAMES = ["フォークリフト", "パレット", "段ボール", "人"] as const;
+
+export const WAREHOUSE_FORKLIFT = 0;
+export const WAREHOUSE_PERSON = 3;
+
+export function warehouseName(id: number): string {
+  return WAREHOUSE_NAMES[id] ?? `分類${id}`;
+}

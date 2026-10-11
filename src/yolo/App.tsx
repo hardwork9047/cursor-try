@@ -4,13 +4,14 @@ import { YOLO_PAGE_URL } from "../config";
 import { formatLoad, formatMs } from "../format";
 import { detectGpu } from "../gpu";
 import type { GpuStatus } from "../types";
-import { COCO_CLASS_COUNT, className } from "./classes";
+import { COCO_CLASS_COUNT, className, warehouseName } from "./classes";
 import { LineCounter, type Direction } from "./counter";
 import { drawScene } from "./draw";
 import { createEngine, type Engine } from "./engine";
 import type { BackendName, LoadResult } from "./protocol";
 import type { Box } from "./postprocess";
-import { SAMPLES, YOLO_MODELS, assetUrl, type Sample } from "./samples";
+import { closePairs, gapLimit, ProximityCounter } from "./proximity";
+import { assetUrl, modelsFor, samplesFor, type Sample, type VisionMode, type YoloModel } from "./samples";
 import { renderYoloCard } from "./shareCard";
 
 type FrameStats = {
@@ -26,7 +27,7 @@ type LoadPhase =
   | { phase: "ready"; info: LoadResult }
   | { phase: "error"; message: string };
 
-type Credit = Pick<Sample, "author" | "page" | "label"> | null;
+type Credit = Pick<Sample, "author" | "page" | "label" | "license"> | null;
 
 const MAX_EDGE = 1600;
 
@@ -60,7 +61,13 @@ function formatBytes(bytes: number): string {
 export function YoloApp() {
   const [gpu, setGpu] = useState<GpuStatus>({ webgpu: false, name: "", detail: "" });
   const [isolated, setIsolated] = useState(window.crossOriginIsolated);
-  const [modelId, setModelId] = useState<(typeof YOLO_MODELS)[number]["id"]>("yolo26n");
+  const [mode, setMode] = useState<VisionMode>("coco");
+  const [modelId, setModelId] = useState<YoloModel["id"]>("yolo26n");
+  const [gapRatio, setGapRatio] = useState(0.08);
+  const [closeNow, setCloseNow] = useState(0);
+  const [nearMiss, setNearMiss] = useState(0);
+  const [nearFrames, setNearFrames] = useState(0);
+  const [frameEdge, setFrameEdge] = useState(0);
   const [load, setLoad] = useState<LoadPhase>({
     phase: "loading",
     loaded: 0,
@@ -104,7 +111,11 @@ export function YoloApp() {
   const statsRef = useRef<FrameStats | null>(null);
   const loadRef = useRef(load);
   const counterRef = useRef(new LineCounter());
+  const proximityRef = useRef(new ProximityCounter());
   const cardUrlRef = useRef<string | null>(null);
+  const gapRef = useRef(gapRatio);
+  const modeRef = useRef(mode);
+  const namesRef = useRef<(id: number) => string>(className);
 
   confRef.current = conf;
   iouRef.current = iou;
@@ -112,8 +123,15 @@ export function YoloApp() {
   lineRatioRef.current = lineRatio;
   directionRef.current = direction;
   loadRef.current = load;
+  gapRef.current = gapRatio;
+  modeRef.current = mode;
+  namesRef.current = mode === "warehouse" ? warehouseName : className;
 
-  const model = YOLO_MODELS.find((item) => item.id === modelId) ?? YOLO_MODELS[0];
+  const models = modelsFor(mode);
+  const samples = samplesFor(mode);
+  const model = models.find((item) => item.id === modelId) ?? models[0];
+  const warehouse = mode === "warehouse";
+  const labelOf = warehouse ? warehouseName : className;
   const ready = load.phase === "ready";
   const rows = tally(boxes);
 
@@ -146,9 +164,14 @@ export function YoloApp() {
     setError(null);
     setExportNote("");
     counterRef.current.reset();
+    proximityRef.current.reset();
     setCrossTotal(0);
     setCrossRows([]);
     setCountedFrames(0);
+    setCloseNow(0);
+    setNearMiss(0);
+    setNearFrames(0);
+    setFrameEdge(0);
     setLoad({ phase: "loading", loaded: 0, total: 0, session: false });
     engine
       .load(assetUrl(model.file), {
@@ -225,6 +248,11 @@ export function YoloApp() {
     return canvas;
   }
 
+  function hotIndexes(snap: HTMLCanvasElement, nextBoxes: Box[]) {
+    if (modeRef.current !== "warehouse") return null;
+    return closePairs(nextBoxes, gapLimit(snap.width, snap.height, gapRef.current)).indexes;
+  }
+
   function paint(snap: HTMLCanvasElement, nextBoxes: Box[]) {
     const stage = stageRef.current;
     if (!stage) return;
@@ -233,7 +261,7 @@ export function YoloApp() {
     const ctx = stage.getContext("2d");
     if (!ctx) return;
     const lineY = countingRef.current ? lineRatioRef.current * snap.height : null;
-    drawScene(ctx, snap, snap.width, snap.height, nextBoxes, lineY);
+    drawScene(ctx, snap, snap.width, snap.height, nextBoxes, lineY, namesRef.current, hotIndexes(snap, nextBoxes));
   }
 
   function noteLiveFps(now: number): number | null {
@@ -252,7 +280,18 @@ export function YoloApp() {
     setHasFrame(true);
     setBoxes(nextBoxes);
     setStats(nextStats);
+    setFrameEdge(Math.min(snap.width, snap.height));
     paint(snap, nextBoxes);
+    if (modeRef.current === "warehouse") {
+      setCloseNow(closePairs(nextBoxes, gapLimit(snap.width, snap.height, gapRef.current)).pairs);
+      if (fromLive) {
+        proximityRef.current.update(nextBoxes, snap.width, snap.height, gapRef.current);
+        setNearMiss(proximityRef.current.events);
+        setNearFrames((value) => value + 1);
+      }
+    } else {
+      setCloseNow(0);
+    }
     if (fromLive && countingRef.current) {
       counterRef.current.update(nextBoxes, lineRatioRef.current * snap.height, directionRef.current);
       setCrossTotal(counterRef.current.total());
@@ -343,13 +382,21 @@ export function YoloApp() {
     }
   }
 
-  async function openStill(src: string, nextCredit: Credit) {
-    const gen = bump();
-    stopStream();
+  function resetTallies() {
     counterRef.current.reset();
+    proximityRef.current.reset();
     setCrossTotal(0);
     setCrossRows([]);
     setCountedFrames(0);
+    setCloseNow(0);
+    setNearMiss(0);
+    setNearFrames(0);
+  }
+
+  async function openStill(src: string, nextCredit: Credit) {
+    const gen = bump();
+    stopStream();
+    resetTallies();
     setCredit(nextCredit);
     const image = new Image();
     image.src = src;
@@ -366,10 +413,7 @@ export function YoloApp() {
   async function startCamera() {
     const gen = bump();
     stopStream();
-    counterRef.current.reset();
-    setCrossTotal(0);
-    setCrossRows([]);
-    setCountedFrames(0);
+    resetTallies();
     setCredit(null);
     setError(null);
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -400,10 +444,7 @@ export function YoloApp() {
   async function startVideo(src: string) {
     const gen = bump();
     stopStream();
-    counterRef.current.reset();
-    setCrossTotal(0);
-    setCrossRows([]);
-    setCountedFrames(0);
+    resetTallies();
     setCredit(null);
     setError(null);
     const video = videoRef.current;
@@ -483,11 +524,33 @@ export function YoloApp() {
     if (snap) paint(snap, boxesRef.current);
   }
 
+  function onGap(value: number) {
+    gapRef.current = value;
+    setGapRatio(value);
+    const snap = snapshotRef.current;
+    if (!snap || modeRef.current !== "warehouse") return;
+    proximityRef.current.rebase(snap.width, snap.height, value);
+    setCloseNow(closePairs(boxesRef.current, gapLimit(snap.width, snap.height, value)).pairs);
+    paint(snap, boxesRef.current);
+  }
+
+  function onMode(next: VisionMode) {
+    if (next === modeRef.current) return;
+    setMode(next);
+    setModelId(next === "warehouse" ? "yoloe26n" : "yolo26n");
+  }
+
   function resetCount() {
     counterRef.current.reset();
     setCrossTotal(0);
     setCrossRows([]);
     setCountedFrames(0);
+  }
+
+  function resetNear() {
+    proximityRef.current.reset();
+    setNearMiss(0);
+    setNearFrames(0);
   }
 
   async function onExport() {
@@ -503,7 +566,18 @@ export function YoloApp() {
         srcH: snap.height,
         boxes: boxesRef.current,
         lineY: countingRef.current ? lineRatioRef.current * snap.height : null,
-        modelLabel: `YOLO26${model.id === "yolo26s" ? "s" : "n"}`,
+        modelLabel: warehouse ? `YOLOE-26${model.id === "yoloe26s" ? "s" : "n"}` : `YOLO26${model.id === "yolo26s" ? "s" : "n"}`,
+        heading: warehouse ? "YOLOE-26 倉庫検出" : "YOLO26 ブラウザ検出",
+        foot: warehouse
+          ? "Ultralytics YOLOE-26 · AGPL-3.0 · forklift / pallet / cardboard box / person · 検出は書き出し時点"
+          : "Ultralytics YOLO26 · AGPL-3.0 · 検出数は書き出し時点のフレーム",
+        names: namesRef.current,
+        hot: hotIndexes(snap, boxesRef.current),
+        safetyLine: warehouse
+          ? `接近 ${closePairs(boxesRef.current, gapLimit(snap.width, snap.height, gapRef.current)).pairs}組${
+              nearFrames > 0 ? ` · ヒヤリハット ${proximityRef.current.events}` : ""
+            }`
+          : null,
         backend: info.backend,
         loadMs: info.loadMs,
         preprocessMs: current.preprocessMs,
@@ -521,7 +595,7 @@ export function YoloApp() {
       setCardUrl(url);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `yolo26-${model.label}.png`;
+      link.download = `${warehouse ? "yoloe26" : "yolo26"}-${model.label}.png`;
       link.click();
       setExportNote("いまのフレームからPNGを保存しました。");
     } catch (err) {
@@ -539,9 +613,11 @@ export function YoloApp() {
       <header className="mast">
         <div>
           <p className="kicker">GENBA VISION · 現場の目視</p>
-          <h1>YOLO26 ブラウザ検出</h1>
+          <h1>{warehouse ? "倉庫・物流の検出" : "YOLO26 ブラウザ検出"}</h1>
           <p className="lede">
-            カメラ、画像、動画。箱も本数も処理時間も、この端末で推論した分だけ出す。
+            {warehouse
+              ? "YOLOE-26 に forklift、pallet、cardboard box、person を焼き込んであります。箱も時間も、この端末の推論だけです。"
+              : "カメラ、画像、動画。箱も本数も処理時間も、この端末で推論した分だけ出す。"}
           </p>
         </div>
         <div className="chips">
@@ -562,17 +638,31 @@ export function YoloApp() {
             01 入力
             <span>source</span>
           </h2>
+          <div className="seg" role="group" aria-label="検出モード">
+            <button type="button" data-testid="mode-coco" aria-pressed={!warehouse} disabled={busy} onClick={() => onMode("coco")}>
+              一般
+            </button>
+            <button
+              type="button"
+              data-testid="mode-warehouse"
+              aria-pressed={warehouse}
+              disabled={busy}
+              onClick={() => onMode("warehouse")}
+            >
+              倉庫・物流
+            </button>
+          </div>
           <div className="models">
-            {YOLO_MODELS.map((item) => (
+            {models.map((item) => (
               <button
                 key={item.id}
                 className="model"
                 data-testid={`yolo-${item.id}`}
-                aria-pressed={item.id === modelId}
+                aria-pressed={item.id === model.id}
                 disabled={busy}
                 onClick={() => setModelId(item.id)}
               >
-                <span className="family">26{item.label === "nano" ? "n" : "s"}</span>
+                <span className="family">{item.mark}</span>
                 <span className="label">{item.label}</span>
                 <span className="meta">{item.note}</span>
               </button>
@@ -622,9 +712,13 @@ export function YoloApp() {
               </button>
             )}
           </div>
-          <p className="conditions">サンプルは CC0。検出はその場で計算します。</p>
+          <p className="conditions">
+            {warehouse
+              ? "サンプルはパブリックドメイン。検出はその場で計算します。"
+              : "サンプルは CC0。検出はその場で計算します。"}
+          </p>
           <div className="sources">
-            {SAMPLES.map((sample) => (
+            {samples.map((sample) => (
               <button
                 key={sample.id}
                 className="ghost"
@@ -664,7 +758,32 @@ export function YoloApp() {
           </label>
           <p className="conditions">
             既定は信頼度 0.25、IoU 0.70。one-to-many の出力を、このブラウザで NMS しています。
+            {warehouse ? " クラス文は書き出し時に固定です。" : ""}
           </p>
+          {warehouse && (
+            <div className="count-box">
+              <label className="slider">
+                <span>接近</span>
+                <input
+                  data-testid="gap-slider"
+                  type="range"
+                  min={0}
+                  max={0.3}
+                  step={0.01}
+                  value={gapRatio}
+                  onChange={(event) => onGap(Number(event.target.value))}
+                />
+                <b>{Math.round(gapRatio * 100)}%</b>
+              </label>
+              <p className="conditions">
+                人とフォークリフトの箱のすき間が、画像の短辺のこの割合以下なら接近です。重なりは 0 です。
+                {frameEdge > 0 ? ` いまの画面では ${Math.round(gapRatio * frameEdge)} px。` : ""}
+              </p>
+              <button className="ghost" type="button" onClick={resetNear}>
+                ヒヤリハットを戻す
+              </button>
+            </div>
+          )}
           <div className="count-box">
             <label className="check">
               <input
@@ -749,9 +868,19 @@ export function YoloApp() {
                       ? "モデルを読めませんでした。"
                       : "モデルを準備しています。"}
           </p>
+          {warehouse && stats && closeNow > 0 && (
+            <p className="safety-alert" role="alert" data-testid="safety-alert">
+              人とフォークリフトが接近しています（{closeNow}組）
+            </p>
+          )}
+          {warehouse && stats && closeNow === 0 && (
+            <p className="conditions" data-testid="safety-clear">
+              接近している組はありません。フォークリフトか人が検出されないと、ここは動きません。
+            </p>
+          )}
           {credit && (
             <p className="conditions">
-              サンプル「{credit.label}」 CC0 · {credit.author} ·{" "}
+              サンプル「{credit.label}」 {credit.license} · {credit.author} ·{" "}
               <a href={credit.page}>Wikimedia Commons</a>
             </p>
           )}
@@ -832,7 +961,7 @@ export function YoloApp() {
             {stats && rows.length === 0 && <li>検出なし</li>}
             {rows.map((row) => (
               <li key={row.classId}>
-                <span>{className(row.classId)}</span>
+                <span>{labelOf(row.classId)}</span>
                 <b>{row.count}</b>
               </li>
             ))}
@@ -848,7 +977,7 @@ export function YoloApp() {
               countedFrames > 0 &&
               crossRows.map((row) => (
                 <li key={row.classId}>
-                  <span>{className(row.classId)}</span>
+                  <span>{labelOf(row.classId)}</span>
                   <b>{row.count}</b>
                 </li>
               ))}
@@ -856,6 +985,23 @@ export function YoloApp() {
               <li className="muted-row">カメラか動画で、線を越えると増えます</li>
             )}
           </ul>
+          {warehouse && (
+            <>
+              <h2 className="subhead">
+                ヒヤリハット
+                <span data-testid="near-miss">{nearFrames > 0 ? `${nearMiss}` : "—"}</span>
+              </h2>
+              <ul className="counts" data-testid="near-counts">
+                <li>
+                  <span>いま接近</span>
+                  <b data-testid="close-now">{stats ? `${closeNow}` : "—"}</b>
+                </li>
+                {nearFrames === 0 && (
+                  <li className="muted-row">カメラか動画で、離れていた組が閾値の内側に入ると増えます</li>
+                )}
+              </ul>
+            </>
+          )}
           <div className="card-actions">
             <button className="ghost" data-testid="export-png" disabled={!stats || !ready} onClick={() => void onExport()}>
               PNGを保存
@@ -867,9 +1013,19 @@ export function YoloApp() {
       </main>
       <footer className="foot">
         <span>
-          Ultralytics YOLO26（2026年1月14日公開）· COCO {COCO_CLASS_COUNT}クラス · 重みは{" "}
-          <a href={`${import.meta.env.BASE_URL}models/LICENSE-AGPL-3.0.txt`}>AGPL-3.0</a>
-          。商用製品への組み込みは Enterprise License。
+          {warehouse ? (
+            <>
+              Ultralytics YOLOE-26 · 焼き込みクラス forklift / pallet / cardboard box / person · 重みは{" "}
+              <a href={`${import.meta.env.BASE_URL}models/LICENSE-AGPL-3.0.txt`}>AGPL-3.0</a>
+              。パレットはオープン語彙では弱いです。商用製品への組み込みは Enterprise License。
+            </>
+          ) : (
+            <>
+              Ultralytics YOLO26（2026年1月14日公開）· COCO {COCO_CLASS_COUNT}クラス · 重みは{" "}
+              <a href={`${import.meta.env.BASE_URL}models/LICENSE-AGPL-3.0.txt`}>AGPL-3.0</a>
+              。商用製品への組み込みは Enterprise License。
+            </>
+          )}
         </span>
         <a href={YOLO_PAGE_URL}>{YOLO_PAGE_URL.replace("https://", "")}</a>
       </footer>

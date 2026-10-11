@@ -34,7 +34,7 @@ function Home() {
             <span className="en">YOLO26 · 2026-01-14</span>
             <strong>YOLO26 ブラウザ検出</strong>
             <p>
-              最新の YOLO26 をカメラ・画像・動画にかける。箱、本数、処理時間は、その場の推論だけ。
+              最新の YOLO26 と、倉庫向けの YOLOE-26。箱、本数、処理時間は、その場の推論だけ。
             </p>
             <span className="go">検出画面へ</span>
           </a>

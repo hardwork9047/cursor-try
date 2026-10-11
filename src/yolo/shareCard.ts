@@ -1,6 +1,5 @@
 import { YOLO_PAGE_URL } from "../config";
 import { formatDate, formatMs } from "../format";
-import { className } from "./classes";
 import { drawScene } from "./draw";
 import type { BackendName } from "./protocol";
 import type { Box } from "./postprocess";
@@ -38,6 +37,11 @@ export type CardInput = {
   fpsNote: string;
   gpuName: string;
   crossTotal: number | null;
+  safetyLine: string | null;
+  heading: string;
+  foot: string;
+  names: (id: number) => string;
+  hot: ReadonlySet<number> | null;
   createdAt: string;
 };
 
@@ -59,7 +63,7 @@ export async function renderYoloCard(input: CardInput): Promise<Blob> {
   frame.height = input.srcH;
   const frameCtx = frame.getContext("2d");
   if (!frameCtx) throw new Error("PNGを作成できませんでした");
-  drawScene(frameCtx, input.image, input.srcW, input.srcH, input.boxes, input.lineY);
+  drawScene(frameCtx, input.image, input.srcW, input.srcH, input.boxes, input.lineY, input.names, input.hot);
 
   const canvas = document.createElement("canvas");
   canvas.width = WIDTH;
@@ -77,7 +81,7 @@ export async function renderYoloCard(input: CardInput): Promise<Blob> {
   ctx.fillText("生産技術メモ", 36, 36);
   ctx.fillStyle = "#f4efe4";
   ctx.font = "400 18px 'IBM Plex Sans JP'";
-  ctx.fillText("YOLO26 ブラウザ検出", 168, 36);
+  ctx.fillText(input.heading, 168, 36);
   ctx.textAlign = "right";
   ctx.fillStyle = "#8fd0a8";
   ctx.font = "700 18px 'IBM Plex Sans JP'";
@@ -99,7 +103,7 @@ export async function renderYoloCard(input: CardInput): Promise<Blob> {
 
   const summary = input.boxes
     .slice(0, 8)
-    .map((box) => `${className(box.classId)} ${(box.score * 100).toFixed(0)}%`)
+    .map((box) => `${input.names(box.classId)} ${(box.score * 100).toFixed(0)}%`)
     .join("  ");
   ctx.fillStyle = "#d9d3c6";
   ctx.font = "400 16px 'IBM Plex Sans JP'";
@@ -112,9 +116,10 @@ export async function renderYoloCard(input: CardInput): Promise<Blob> {
     photoX,
     550,
   );
-  if (input.crossTotal != null) {
-    ctx.fillText(`ライン通過 ${input.crossTotal}`, photoX, 574);
-  }
+  const extra = [input.crossTotal != null ? `ライン通過 ${input.crossTotal}` : "", input.safetyLine ?? ""]
+    .filter(Boolean)
+    .join("  ·  ");
+  if (extra) ctx.fillText(ellipsize(ctx, extra, photoW), photoX, 574);
 
   const columns = [
     { value: formatMs(input.inferenceMs).replace(" ", ""), label: "推論" },
@@ -149,7 +154,7 @@ export async function renderYoloCard(input: CardInput): Promise<Blob> {
   ctx.fillText(`${formatDate(input.createdAt)}    ${YOLO_PAGE_URL}`, 32, 630);
   ctx.font = "400 14px 'IBM Plex Mono'";
   ctx.fillStyle = "#8d877c";
-  ctx.fillText("Ultralytics YOLO26 · AGPL-3.0 · 検出数は書き出し時点のフレーム", 32, 654);
+  ctx.fillText(ellipsize(ctx, input.foot, WIDTH - 64), 32, 654);
 
   const blob = await new Promise<Blob | null>((resolve) => {
     canvas.toBlob((value) => resolve(value), "image/png");
