@@ -1,0 +1,8 @@
+{
+  "title": "__TITLE__",
+  "description": "ここに、このデモが何をするかを一文で書く。測っていない数値は書かない。",
+  "tags": ["試作"],
+  "date": "__DATE__",
+  "tech": "静的 HTML",
+  "status": "wip"
+}

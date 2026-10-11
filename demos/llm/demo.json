@@ -1,0 +1,8 @@
+{
+  "title": "ブラウザ内ローカルLLMベンチ",
+  "description": "小さなオープンLLMをブラウザの WebGPU だけで動かし、立ち上げ・段取り時間・スループットを測る。画面の数字は、その場の測定だけ。",
+  "tags": ["WebGPU", "WebLLM", "ベンチマーク"],
+  "date": "2026-10-10",
+  "tech": "Vite + React + TypeScript / @mlc-ai/web-llm 0.2.85",
+  "status": "ready"
+}

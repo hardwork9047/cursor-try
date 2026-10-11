@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagoda Garden</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,400&family=Outfit:wght@300;400&display=swap">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1c1612; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #hud {
+    position: fixed; left: 28px; bottom: 22px; z-index: 2; pointer-events: none;
+    color: #fff8f0; text-shadow: 0 2px 18px rgba(40, 18, 8, 0.45);
+  }
+  #hud h1 {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-weight: 500; font-size: 46px; line-height: 0.9; margin: 0;
+    letter-spacing: 0.14em;
+  }
+  #hud h1 span { display: block; font-style: italic; letter-spacing: 0.22em; font-size: 18px; opacity: 0.85; margin-top: 6px; }
+  #hud p {
+    font-family: Outfit, system-ui, sans-serif; font-weight: 300;
+    letter-spacing: 0.24em; text-transform: uppercase; font-size: 11px;
+    margin: 12px 0 0; opacity: 0.78;
+  }
+  #err {
+    position: fixed; left: 12px; top: 12px; z-index: 5; max-width: min(80vw, 640px);
+    background: #7a1e1e; color: #fff; padding: 12px 14px; white-space: pre-wrap;
+    font: 13px/1.4 ui-monospace, monospace;
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+<div id="hud">
+  <h1>PAGODA<span>庭の塔</span></h1>
+  <p>Drag to orbit · scroll to zoom</p>
+</div>
+<script>
+window.addEventListener('error', function (e) {
+  var d = document.createElement('pre');
+  d.id = 'err';
+  d.textContent = (e.message || 'Error') + (e.filename ? '\n' + e.filename + ':' + e.lineno : '');
+  document.body.appendChild(d);
+});
+
+if (typeof THREE === 'undefined') {
+  throw new Error('Three.js failed to load');
+}
+
+var STONE = 0xa39e96;
+var STONE_DARK = 0x6a6560;
+var STONE_MID = 0x8d8880;
+var WOOD = 0x6b4226;
+var WOOD_LIGHT = 0x8a5a34;
+var RED = 0xc23b2e;
+var RED_DARK = 0x8e2a22;
+var CREAM = 0xf4efe6;
+var WINDOW = 0x243038;
+var ROOF = 0x2c3c4c;
+var ROOF_DARK = 0x243442;
+var ROOF_EDGE = 0x3e5164;
+var RIDGE = 0x6d5830;
+var GOLD = 0xe6c15a;
+var GOLD_TIP = 0xfff1c4;
+var BARK = 0x5c3a28;
+var GLOW = 0xffc56e;
+var CLOUD = 0xfffaf6;
+var BLACK = 0x241816;
+var WATER_BED = 0x1a4558;
+var GRAVEL = 0xd5cbb6;
+var GRAVEL_DARK = 0xb7ab96;
+var MOSS = [0x4e8a44, 0x3d7236, 0x5c9a4c, 0x2f5c30, 0x6aaa56, 0x457e3c];
+var BLOSSOM = [0xf7b6c8, 0xee8aa8, 0xffd5e0, 0xfceff3, 0xe56b90];
+var FLOWER = [0xf7f4ef, 0xe6c84a, 0xd45d8c, 0xf2f6ea];
+
+var POND = { x: 17, z: 12, rx: 6.2, ry: 4.3 };
+
+var occupied = new Set();
+var groups = new Map();
+
+function hash(x, z) {
+  var n = Math.imul(x | 0, 374761393) + Math.imul(z | 0, 668265263);
+  n = Math.imul(n ^ (n >>> 13), 1274126177);
+  return ((n ^ (n >>> 16)) >>> 0) / 4294967295;
+}
+
+function v(x, y, z, color) {
+  x = Math.round(x);
+  y = Math.round(y);
+  z = Math.round(z);
+  var id = x + ',' + y + ',' + z;
+  if (occupied.has(id)) return;
+  occupied.add(id);
+  var g = groups.get(color);
+  if (!g) { g = []; groups.set(color, g); }
+  g.push(x, y, z);
+}
+
+function pondDist(x, z) {
+  var dx = (x - POND.x) / POND.rx;
+  var dz = (z - POND.z) / POND.ry;
+  return dx * dx + dz * dz;
+}
+
+function balcony(y, half) {
+  var o = half + 1;
+  for (var i = -o; i <= o; i++) {
+    v(i, y, o, WOOD);
+    v(i, y, -o, WOOD);
+    v(o, y, i, WOOD);
+    v(-o, y, i, WOOD);
+    if (i % 2 === 0) {
+      v(i, y + 1, o, RED);
+      v(i, y + 1, -o, RED);
+      v(o, y + 1, i, RED);
+      v(-o, y + 1, i, RED);
+    }
+  }
+}
+
+function walls(half, y0, y1, door) {
+  for (var y = y0; y <= y1; y++) {
+    for (var x = -half; x <= half; x++) {
+      var doorHole = door && Math.abs(x) <= 1 && y <= y0 + 1;
+      if (!doorHole) v(x, y, half, CREAM);
+      var backWin = !door && x === 0 && (y === y0 || y === y0 + 1);
+      v(x, y, -half, backWin ? WINDOW : CREAM);
+    }
+    for (var z = -half + 1; z <= half - 1; z++) {
+      var sideWin = !door && z === 0 && (y === y0 || y === y0 + 1);
+      v(-half, y, z, sideWin ? WINDOW : CREAM);
+      v(half, y, z, sideWin ? WINDOW : CREAM);
+    }
+  }
+}
+
+function addRoof(y, half, layers) {
+  for (var i = 0; i < layers; i++) {
+    var h = half - i;
+    if (h < 0) break;
+    for (var x = -h; x <= h; x++) {
+      for (var z = -h; z <= h; z++) {
+        var edge = Math.abs(x) === h || Math.abs(z) === h;
+        var checker = ((x + z + i) & 1) === 0;
+        var color = edge ? ROOF_EDGE : (checker ? ROOF : ROOF_DARK);
+        if (i === layers - 1 && z === 0) color = RIDGE;
+        v(x, y + i, z, color);
+      }
+    }
+  }
+  for (var sx = -1; sx <= 1; sx += 2) {
+    for (var sz = -1; sz <= 1; sz += 2) {
+      var cx = sx * half;
+      var cz = sz * half;
+      v(cx + sx, y + 1, cz, ROOF_EDGE);
+      v(cx, y + 1, cz + sz, ROOF_EDGE);
+      v(cx + sx, y + 2, cz + sz, GOLD);
+    }
+  }
+}
+
+function buildPagoda() {
+  var x, z, py;
+  for (x = -7; x <= 7; x++) {
+    for (z = -7; z <= 7; z++) {
+      var edge = Math.abs(x) === 7 || Math.abs(z) === 7;
+      v(x, 0, z, STONE_DARK);
+      v(x, 1, z, edge ? STONE_DARK : STONE);
+    }
+  }
+  for (x = -2; x <= 2; x++) {
+    v(x, 1, 8, STONE_MID);
+    v(x, 0, 9, STONE_MID);
+  }
+  v(-3, 1, 8, STONE_DARK);
+  v(3, 1, 8, STONE_DARK);
+  v(-3, 1, 9, STONE_DARK);
+  v(3, 1, 9, STONE_DARK);
+  v(-3, 2, 8, STONE_DARK);
+  v(3, 2, 8, STONE_DARK);
+
+  var tiers = [
+    { half: 4, body: 3, roof: 6, layers: 4, door: true },
+    { half: 3, body: 2, roof: 5, layers: 3, door: false },
+    { half: 2, body: 2, roof: 4, layers: 3, door: false },
+    { half: 1, body: 2, roof: 3, layers: 2, door: false }
+  ];
+
+  var y = 2;
+  for (var t = 0; t < tiers.length; t++) {
+    var tier = tiers[t];
+    var half = tier.half;
+    for (x = -half; x <= half; x++) {
+      for (z = -half; z <= half; z++) v(x, y, z, (x + z) & 1 ? WOOD : WOOD_LIGHT);
+    }
+    if (!tier.door) balcony(y, half);
+    var y0 = y + 1;
+    var y1 = y + tier.body;
+    for (var sx = -1; sx <= 1; sx += 2) {
+      for (var sz = -1; sz <= 1; sz += 2) {
+        for (py = y0; py <= y1; py++) v(sx * half, py, sz * half, RED);
+      }
+    }
+    walls(half, y0, y1, tier.door);
+    var beamY = y1 + 1;
+    for (x = -half; x <= half; x++) {
+      for (z = -half; z <= half; z++) v(x, beamY, z, RED_DARK);
+    }
+    addRoof(beamY + 1, tier.roof, tier.layers);
+    y = beamY + tier.layers + 1;
+  }
+
+  for (var i = 0; i < 4; i++) v(0, y + i, 0, GOLD);
+  var rings = [y + 4, y + 6];
+  for (var r = 0; r < rings.length; r++) {
+    var ry = rings[r];
+    v(0, ry, 0, GOLD);
+    v(1, ry, 0, GOLD);
+    v(-1, ry, 0, GOLD);
+    v(0, ry, 1, GOLD);
+    v(0, ry, -1, GOLD);
+  }
+  v(0, y + 7, 0, GOLD_TIP);
+  v(0, y + 8, 0, GOLD);
+}
+
+function buildTorii(z) {
+  var x, y;
+  for (y = 1; y <= 7; y++) {
+    v(-5, y, z, RED);
+    v(-4, y, z, RED);
+    v(4, y, z, RED);
+    v(5, y, z, RED);
+    v(-5, y, z + 1, RED_DARK);
+    v(-4, y, z + 1, RED_DARK);
+    v(4, y, z + 1, RED_DARK);
+    v(5, y, z + 1, RED_DARK);
+  }
+  for (x = -5; x <= 5; x++) {
+    v(x, 5, z, RED);
+    v(x, 5, z + 1, RED_DARK);
+  }
+  for (x = -6; x <= 6; x++) {
+    v(x, 7, z, BLACK);
+    v(x, 7, z + 1, BLACK);
+    v(x, 8, z, RED);
+    v(x, 8, z + 1, RED);
+  }
+}
+
+function lantern(x, z) {
+  var dx, dz;
+  for (dx = -1; dx <= 1; dx++) {
+    for (dz = -1; dz <= 1; dz++) v(x + dx, 1, z + dz, STONE_DARK);
+  }
+  v(x, 2, z, STONE);
+  v(x, 3, z, GLOW);
+  v(x + 1, 3, z, STONE_MID);
+  v(x - 1, 3, z, STONE_MID);
+  v(x, 3, z + 1, STONE_MID);
+  v(x, 3, z - 1, STONE_MID);
+  for (dx = -1; dx <= 1; dx++) {
+    for (dz = -1; dz <= 1; dz++) v(x + dx, 4, z + dz, STONE_DARK);
+  }
+  v(x, 5, z, STONE);
+}
+
+function cherry(x, z) {
+  if (pondDist(x, z) < 1.1) return;
+  var h = 4 + Math.floor(hash(x, z) * 3);
+  var y, dx, dy, dz, k;
+  for (y = 1; y <= h; y++) v(x, y, z, BARK);
+  var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]];
+  for (k = 0; k < dirs.length; k++) {
+    if (hash(x + k + 3, z + k) < 0.35) continue;
+    v(x + dirs[k][0], h, z + dirs[k][1], BARK);
+    v(x + dirs[k][0] * 2, h + 1, z + dirs[k][1] * 2, BARK);
+  }
+  for (dx = -3; dx <= 3; dx++) {
+    for (dy = -1; dy <= 3; dy++) {
+      for (dz = -3; dz <= 3; dz++) {
+        var r2 = dx * dx + dy * dy * 1.35 + dz * dz;
+        if (r2 > 10 || r2 < 1.1) continue;
+        if (hash(x + dx * 3, z + dz * 5 + dy * 9) < 0.38) continue;
+        var c = BLOSSOM[Math.floor(hash(x + dx, z + dz + dy * 7) * BLOSSOM.length) % BLOSSOM.length];
+        v(x + dx, h + dy, z + dz, c);
+      }
+    }
+  }
+  for (k = 0; k < 8; k++) {
+    dx = Math.floor(hash(x + k * 5, z) * 7) - 3;
+    dz = Math.floor(hash(x, z + k * 4) * 7) - 3;
+    if (pondDist(x + dx, z + dz) < 1) continue;
+    v(x + dx, 1, z + dz, BLOSSOM[k % BLOSSOM.length]);
+  }
+}
+
+function pine(x, z, h) {
+  var y, i, dx, dz, r;
+  for (y = 1; y <= 2; y++) v(x, y, z, BARK);
+  for (i = 0; i < h; i++) {
+    var layer = h - i;
+    r = layer > h * 0.66 ? 2 : layer > h * 0.33 ? 1 : 0;
+    for (dx = -r; dx <= r; dx++) {
+      for (dz = -r; dz <= r; dz++) {
+        if (Math.abs(dx) + Math.abs(dz) > r + (r > 0 ? 1 : 0)) continue;
+        var c = hash(x + dx + i * 2, z + dz) > 0.5 ? 0x1d4a34 : 0x2f6a48;
+        v(x + dx, 3 + i, z + dz, c);
+      }
+    }
+  }
+}
+
+function bamboo(x, z, h) {
+  var y;
+  for (y = 1; y <= h; y++) v(x, y, z, y % 3 === 0 ? 0x3f6b28 : 0x7dae3e);
+  v(x + 1, h - 1, z, 0x4e7d28);
+  v(x + 1, h, z, 0x8fbf48);
+  v(x + 2, h, z, 0x7dae3e);
+  v(x - 1, h - 2, z + 1, 0x8fbf48);
+  v(x, h, z - 1, 0x4e7d28);
+  v(x, h + 1, z, 0xa4d45a);
+}
+
+function rockCluster(x, z, r) {
+  var dx, dz, dy;
+  for (dx = -r; dx <= r; dx++) {
+    for (dz = -r; dz <= r; dz++) {
+      var rr = dx * dx + dz * dz;
+      if (rr > r * r) continue;
+      var hh = 1 + Math.floor((1 - rr / (r * r + 0.01)) * r);
+      for (dy = 1; dy <= hh; dy++) {
+        var c = hash(x + dx, z + dz + dy) > 0.55 ? STONE : STONE_DARK;
+        v(x + dx, dy, z + dz, c);
+      }
+    }
+  }
+}
+
+function shrub(x, z) {
+  var cols = [0x3e7a3a, 0x4e9444, 0x2f6230];
+  var dx, dz;
+  for (dx = -1; dx <= 1; dx++) {
+    for (dz = -1; dz <= 1; dz++) {
+      if (Math.abs(dx) + Math.abs(dz) > 2) continue;
+      v(x + dx, 1, z + dz, cols[(dx + dz + 3) % 3]);
+    }
+  }
+  v(x, 2, z, 0x3e7a3a);
+}
+
+function bench(x, z) {
+  v(x, 1, z, WOOD_LIGHT);
+  v(x + 1, 1, z, WOOD_LIGHT);
+  v(x, 1, z + 1, WOOD);
+  v(x + 1, 1, z + 1, WOOD);
+  v(x, 2, z + 1, RED);
+  v(x + 1, 2, z + 1, RED);
+}
+
+function flowers(x, z) {
+  var i, dx, dz;
+  for (i = 0; i < 6; i++) {
+    dx = Math.floor(hash(x + i * 2, z) * 5) - 2;
+    dz = Math.floor(hash(x, z + i * 3) * 5) - 2;
+    if (pondDist(x + dx, z + dz) < 1.05) continue;
+    v(x + dx, 1, z + dz, FLOWER[i % FLOWER.length]);
+  }
+}
+
+function cloud(x, y, z) {
+  var cells = [[0,0,0],[1,0,0],[2,0,0],[3,0,0],[1,1,0],[2,1,0],[2,0,1],[1,0,-1],[0,0,1],[2,0,-1]];
+  for (var i = 0; i < cells.length; i++) {
+    v(x + cells[i][0], y + cells[i][1], z + cells[i][2], CLOUD);
+  }
+}
+
+function buildRidge() {
+  for (var x = -24; x <= 24; x++) {
+    var n = Math.sin((x + 4) * 0.32) * 0.5 + Math.sin(x * 0.15) * 0.5;
+    var hh = Math.max(3, Math.round(8 * (0.42 + 0.58 * (n * 0.5 + 0.5))));
+    for (var y = 1; y <= hh; y++) {
+      var c = y >= hh - 1 ? 0xd5ddd6 : (y > hh * 0.55 ? 0x8aa0ae : 0x6e8796);
+      v(x, y, -26, c);
+      if (y < hh - 2) v(x, y, -25, 0x7d97a6);
+    }
+  }
+}
+
+function buildGarden() {
+  buildPagoda();
+  buildTorii(23);
+  buildRidge();
+
+  lantern(-6, 6);
+  lantern(6, 7);
+  lantern(6, 16);
+  lantern(12, 8);
+  lantern(-14, 2);
+  lantern(22, 18);
+
+  var cherries = [
+    [-16, 4], [-18, -8], [-12, -16], [-2, -18], [8, -15],
+    [22, -2], [24, 8], [21, 19], [7, 20], [-7, 17],
+    [-16, 15], [-21, 8], [10, -20], [-9, 10], [4, 16]
+  ];
+  for (var i = 0; i < cherries.length; i++) cherry(cherries[i][0], cherries[i][1]);
+
+  pine(-14, -21, 7);
+  pine(0, -22, 8);
+  pine(12, -20, 6);
+  pine(-22, -14, 7);
+  pine(20, -16, 5);
+
+  var grove = [[-22,-2],[-21,0],[-23,1],[-20,-4],[-22,3],[-19,-1],[-24,-3],[-21,4],[-18,2],[-23,-6]];
+  for (i = 0; i < grove.length; i++) bamboo(grove[i][0], grove[i][1], 7 + (i % 4));
+
+  rockCluster(19, 14, 2);
+  rockCluster(22, 7, 2);
+  rockCluster(11, 6, 1);
+  rockCluster(-16, -12, 2);
+  rockCluster(-14, -10, 1);
+  rockCluster(-18, -15, 1);
+  rockCluster(24, 14, 2);
+
+  shrub(4, 11);
+  shrub(-4, 12);
+  shrub(5, 18);
+  shrub(-5, 19);
+  shrub(9, 17);
+  shrub(-11, 6);
+  shrub(8, 5);
+
+  bench(5, 14);
+  bench(-6, 15);
+
+  flowers(-10, 12);
+  flowers(9, 9);
+  flowers(-4, -8);
+  flowers(14, 18);
+  flowers(-18, 12);
+
+  for (var sx = 9; sx <= 14; sx++) {
+    v(sx, 1, 12, WOOD);
+    v(sx, 1, 13, WOOD_LIGHT);
+  }
+  for (sx = 3; sx <= 8; sx += 2) {
+    v(sx, 1, 12, STONE);
+    v(sx, 1, 13, STONE_MID);
+  }
+
+  v(-6, 1, 10, STONE_DARK);
+  v(-6, 2, 10, STONE);
+  v(-6, 3, 10, 0x6eb0c8);
+
+  cloud(-18, 30, -8);
+  cloud(8, 32, 6);
+  cloud(26, 29, -14);
+  cloud(-6, 33, 18);
+  cloud(16, 31, 22);
+
+  for (var x = -26; x <= 26; x++) {
+    for (var z = -26; z <= 26; z++) {
+      if (occupied.has(x + ',0,' + z)) continue;
+      var d = pondDist(x, z);
+      if (d < 1) {
+        v(x, 0, z, WATER_BED);
+        continue;
+      }
+      if (d < 1.38) {
+        v(x, 0, z, STONE_MID);
+        v(x, 1, z, d < 1.16 ? STONE_DARK : STONE);
+        continue;
+      }
+      var zen = x <= -12 && x >= -22 && z <= -8 && z >= -18;
+      var onPath = Math.abs(x) <= 1 && z >= 10 && z <= 25;
+      var color;
+      if (zen) color = ((x + z) % 4 === 0) ? GRAVEL_DARK : GRAVEL;
+      else if (onPath) color = (x + z) % 3 === 0 ? GRAVEL_DARK : GRAVEL;
+      else color = MOSS[Math.floor(hash(x, z) * MOSS.length) % MOSS.length];
+      v(x, 0, z, color);
+      if (!zen && !onPath && hash(x * 2, z * 3) > 0.955) v(x, 1, z, MOSS[0]);
+      if (Math.abs(x) === 2 && z >= 10 && z <= 24 && z % 2 === 0) v(x, 1, z, STONE_MID);
+    }
+  }
+}
+
+buildGarden();
+
+var scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0xf3d4b8, 0.0085);
+
+var skyCanvas = document.createElement('canvas');
+skyCanvas.width = 16;
+skyCanvas.height = 256;
+var sg = skyCanvas.getContext('2d');
+var grd = sg.createLinearGradient(0, 0, 0, 256);
+grd.addColorStop(0, '#8eb6d8');
+grd.addColorStop(0.42, '#f0c8a4');
+grd.addColorStop(0.7, '#f6d7b8');
+grd.addColorStop(1, '#f3d4b8');
+sg.fillStyle = grd;
+sg.fillRect(0, 0, 16, 256);
+var skyTex = new THREE.CanvasTexture(skyCanvas);
+scene.background = skyTex;
+
+var camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 240);
+var renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0xfff6ee, 0.28));
+scene.add(new THREE.HemisphereLight(0xffe4c4, 0x3e6b3a, 0.55));
+var sunLight = new THREE.DirectionalLight(0xfff0d0, 1.05);
+sunLight.position.set(-28, 40, -12);
+scene.add(sunLight);
+var fill = new THREE.DirectionalLight(0x9ec0dc, 0.28);
+fill.position.set(20, 18, 30);
+scene.add(fill);
+
+[[ -6, 3.2, 6 ], [ 6, 3.2, 16 ], [ 12, 3.2, 8 ]].forEach(function (p) {
+  var light = new THREE.PointLight(0xffb15a, 0.65, 10, 2);
+  light.position.set(p[0], p[1], p[2]);
+  scene.add(light);
+});
+
+var dummy = new THREE.Object3D();
+groups.forEach(function (cells, color) {
+  var geo = new THREE.BoxGeometry(0.95, 0.95, 0.95);
+  var unlit = color === GLOW || color === CLOUD || color === GOLD_TIP;
+  var mat = unlit
+    ? new THREE.MeshBasicMaterial({ color: color })
+    : new THREE.MeshLambertMaterial({ color: color });
+  var count = cells.length / 3;
+  var mesh = new THREE.InstancedMesh(geo, mat, count);
+  for (var i = 0; i < count; i++) {
+    dummy.position.set(cells[i * 3], cells[i * 3 + 1], cells[i * 3 + 2]);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(i, dummy.matrix);
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+  scene.add(mesh);
+});
+
+var waterGeo = new THREE.CircleGeometry(1, 48);
+var water = new THREE.Mesh(waterGeo, new THREE.MeshPhongMaterial({
+  color: 0x2f86a8,
+  transparent: true,
+  opacity: 0.78,
+  shininess: 90,
+  specular: 0xaaddee,
+  side: THREE.DoubleSide
+}));
+water.rotation.x = -Math.PI / 2;
+water.scale.set(POND.rx, POND.ry, 1);
+water.position.set(POND.x, 0.55, POND.z);
+scene.add(water);
+var waterBase = waterGeo.attributes.position.array.slice();
+
+var sun = new THREE.Mesh(
+  new THREE.SphereGeometry(3.2, 20, 16),
+  new THREE.MeshBasicMaterial({ color: 0xfff3cf })
+);
+sun.position.set(-34, 36, -22);
+scene.add(sun);
+
+var koiGeo = new THREE.SphereGeometry(0.38, 10, 8);
+var koiColors = [0xf08a3c, 0xf4f1ea, 0xd4453a, 0xf6b56a, 0xfff8f2];
+var kois = [];
+for (var k = 0; k < 5; k++) {
+  var body = new THREE.Mesh(koiGeo, new THREE.MeshLambertMaterial({ color: koiColors[k] }));
+  body.scale.set(1.85, 0.42, 0.72);
+  var tail = new THREE.Mesh(
+    new THREE.ConeGeometry(0.22, 0.48, 4),
+    new THREE.MeshLambertMaterial({ color: koiColors[k] })
+  );
+  tail.rotation.z = Math.PI / 2;
+  tail.position.x = -0.55;
+  body.add(tail);
+  scene.add(body);
+  kois.push({ mesh: body, phase: k * 1.27, radius: 1.8 + k * 0.62, speed: 0.32 + k * 0.04 });
+}
+
+var petalGeo = new THREE.BoxGeometry(0.18, 0.05, 0.12);
+var petals = [];
+for (k = 0; k < 48; k++) {
+  var petal = new THREE.Mesh(
+    petalGeo,
+    new THREE.MeshLambertMaterial({ color: BLOSSOM[k % BLOSSOM.length] })
+  );
+  scene.add(petal);
+  petals.push({
+    mesh: petal,
+    x: (Math.random() - 0.5) * 42,
+    z: (Math.random() - 0.5) * 42,
+    y: 6 + Math.random() * 22,
+    vy: 0.35 + Math.random() * 0.7,
+    ph: Math.random() * Math.PI * 2
+  });
+}
+
+var target = new THREE.Vector3(3, 11, 3);
+var yaw = 0.78;
+var pitch = 0.4;
+var dist = 50;
+var autoRotate = true;
+var dragging = false;
+var lastX = 0;
+var lastY = 0;
+
+function updateCamera(bob) {
+  var cp = Math.cos(pitch);
+  camera.position.set(
+    target.x + Math.sin(yaw) * cp * dist,
+    target.y + Math.sin(pitch) * dist + (bob || 0),
+    target.z + Math.cos(yaw) * cp * dist
+  );
+  camera.lookAt(target);
+}
+
+var el = renderer.domElement;
+el.addEventListener('pointerdown', function (e) {
+  dragging = true;
+  autoRotate = false;
+  lastX = e.clientX;
+  lastY = e.clientY;
+});
+window.addEventListener('pointerup', function () { dragging = false; });
+window.addEventListener('pointermove', function (e) {
+  if (!dragging) return;
+  var dx = e.clientX - lastX;
+  var dy = e.clientY - lastY;
+  lastX = e.clientX;
+  lastY = e.clientY;
+  yaw -= dx * 0.005;
+  pitch -= dy * 0.0035;
+  if (pitch < 0.18) pitch = 0.18;
+  if (pitch > 1.15) pitch = 1.15;
+});
+el.addEventListener('wheel', function (e) {
+  e.preventDefault();
+  dist *= e.deltaY > 0 ? 1.06 : 0.94;
+  if (dist < 16) dist = 16;
+  if (dist > 92) dist = 92;
+}, { passive: false });
+el.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+window.addEventListener('resize', function () {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+var clock = new THREE.Clock();
+updateCamera(0);
+
+function frame() {
+  requestAnimationFrame(frame);
+  var dt = Math.min(clock.getDelta(), 0.05);
+  var t = clock.elapsedTime;
+  if (autoRotate) yaw += dt * 0.045;
+
+  var pos = waterGeo.attributes.position;
+  for (var i = 0; i < pos.count; i++) {
+    var ix = i * 3;
+    pos.array[ix + 2] = waterBase[ix + 2] + Math.sin(t * 1.4 + waterBase[ix] * 3.1 + waterBase[ix + 1] * 2.4) * 0.045;
+  }
+  pos.needsUpdate = true;
+
+  for (var ki = 0; ki < kois.length; ki++) {
+    var fish = kois[ki];
+    var a = t * fish.speed + fish.phase;
+    fish.mesh.position.set(
+      POND.x + Math.cos(a) * fish.radius,
+      0.78,
+      POND.z + Math.sin(a) * fish.radius * 0.62
+    );
+    fish.mesh.rotation.y = -a;
+  }
+
+  for (var pi = 0; pi < petals.length; pi++) {
+    var p = petals[pi];
+    p.y -= p.vy * dt;
+    p.x += Math.sin(t * 0.7 + p.ph) * dt * 0.35;
+    if (p.y < 0.7) {
+      p.y = 16 + Math.random() * 14;
+      p.x = (Math.random() - 0.5) * 42;
+      p.z = (Math.random() - 0.5) * 42;
+    }
+    p.mesh.position.set(p.x, p.y, p.z);
+    p.mesh.rotation.x = t * 0.8 + p.ph;
+    p.mesh.rotation.z = t * 0.5 + p.ph;
+  }
+
+  updateCamera(Math.sin(t * 0.35) * 0.12);
+  renderer.render(scene, camera);
+}
+frame();
+</script>
+</body>
+</html>

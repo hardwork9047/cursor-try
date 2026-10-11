@@ -23,8 +23,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npm run build
+          cache-dependency-path: demos/*/package-lock.json
+      - name: Build every web demo and the gallery
+        run: node scripts/build-site.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

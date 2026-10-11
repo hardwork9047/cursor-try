@@ -1,0 +1,8 @@
+{
+  "title": "ローカルLLM 同時リクエスト測定",
+  "description": "ローカルの LLM サーバへ同時に複数リクエストを送り、先頭トークンまでの待ちがどう伸びるかを測る Python のキット。図は、その実行で測った数値だけから描く。",
+  "tags": ["Python", "CLI", "ベンチマーク"],
+  "date": "2026-10-11",
+  "tech": "Python 3.10+ / httpx / matplotlib",
+  "status": "ready"
+}

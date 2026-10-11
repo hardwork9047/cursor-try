@@ -1,0 +1,15 @@
+Noto Sans JP (Japanese subset, weight 500)
+
+File: NotoSansJP-Medium.ttf
+Source distribution: Fontsource package "noto-sans-jp" file japanese-500-normal.ttf
+(https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-jp@5.2.8/japanese-500-normal.ttf)
+
+The font file is unmodified from that distribution. Its name table identifies the
+family as "Noto Sans JP". The embedded copyright says:
+
+  (c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+
+Noto Sans CJK and Source Han Sans are the same glyph set published by Google
+and Adobe. Licensed under the SIL Open Font License, Version 1.1 (OFL.txt).
+This kit does not rename or modify the font. Charts rendered with it are not
+subject to the OFL.

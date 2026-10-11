@@ -4,24 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "typecheck": "tsc --noEmit",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort"
-  },
-  "dependencies": {
-    "@fontsource/ibm-plex-mono": "^5.2.6",
-    "@fontsource/ibm-plex-sans-jp": "^5.2.6",
-    "@mlc-ai/web-llm": "0.2.85",
-    "onnxruntime-web": "^1.30.0",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
-  },
-  "devDependencies": {
-    "@types/react": "^19.1.13",
-    "@types/react-dom": "^19.1.9",
-    "@vitejs/plugin-react": "^5.0.2",
-    "typescript": "^5.9.2",
-    "vite": "^7.1.5"
+    "build": "node scripts/build-site.mjs",
+    "serve": "node scripts/serve-site.mjs",
+    "new-demo": "node scripts/new-demo.mjs",
+    "new-tool": "node scripts/new-tool.mjs"
   }
 }
