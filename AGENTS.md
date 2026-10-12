@@ -41,6 +41,8 @@ npm run new-tool -- <slug>
 
 ## 終了前
 
+`demos/js-wasm-bench` の `npm run build` は wasm-pack を呼びます。Pages のワークフローが Rust、`wasm32-unknown-unknown`、wasm-pack を先に入れます。wasm-opt は通しません。他のデモの依存には足しません。
+
 リポジトリのルートで次が成功してから終えてください。
 
 ```bash

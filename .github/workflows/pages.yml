@@ -24,6 +24,12 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: demos/*/package-lock.json
+      - name: Install Rust for demos/js-wasm-bench
+        uses: dtolnay/rust-toolchain@1.83.0
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Build every web demo and the gallery
         run: node scripts/build-site.mjs
       - uses: actions/configure-pages@v5

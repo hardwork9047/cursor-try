@@ -12,6 +12,7 @@ Junta の小さなデモを、同じ GitHub Pages に並べる場所です。Web
 | ブラウザ内ローカルLLMベンチ | [`demos/llm/`](demos/llm/) | [/cursor-try/llm/](https://hardwork9047.github.io/cursor-try/llm/) |
 | YOLO26 ブラウザ検出 | [`demos/yolo/`](demos/yolo/) | [/cursor-try/yolo/](https://hardwork9047.github.io/cursor-try/yolo/) |
 | Voxel Pagoda Garden | [`demos/pagoda-garden/`](demos/pagoda-garden/) | [/cursor-try/pagoda-garden/](https://hardwork9047.github.io/cursor-try/pagoda-garden/) |
+| JS と WebAssembly の速度 | [`demos/js-wasm-bench/`](demos/js-wasm-bench/) | [/cursor-try/js-wasm-bench/](https://hardwork9047.github.io/cursor-try/js-wasm-bench/) |
 | ローカルLLM 同時リクエスト測定 | [`tools/llm-concurrency-bench/`](tools/llm-concurrency-bench/) | Pages には載せず、カードから README とソースへ |
 
 ギャラリーのカードは、各フォルダの `demo.json` / `tool.json` から作ります。手で一覧を書き足す必要はありません。
@@ -57,6 +58,7 @@ npm run serve    # http://127.0.0.1:4173/cursor-try/
 ```text
 http://127.0.0.1:5173/cursor-try/llm/
 http://127.0.0.1:5174/cursor-try/yolo/
+http://127.0.0.1:5175/cursor-try/js-wasm-bench/
 ```
 
 ## 置いてあるもの
@@ -66,11 +68,12 @@ http://127.0.0.1:5174/cursor-try/yolo/
 - [ブラウザ内ローカルLLMベンチ](demos/llm/README.md)。WebGPU と WebLLM。重みはブラウザの外へ出ません。
 - [YOLO26 ブラウザ検出](demos/yolo/README.md)。YOLO26 と倉庫向け YOLOE-26。重みは **AGPL-3.0** です。サンプル画像のクレジットもそこにあります。
 - [Voxel Pagoda Garden](demos/pagoda-garden/README.md)。単一 HTML。`index.html` は Grok 4.7 の一発出力で、バイト列は変えていません。
+- [JS と WebAssembly の速度](demos/js-wasm-bench/README.md)。同じ仕事を JavaScript と Rust の WASM で測ります。ビルドに Rust と wasm-pack が要ります。
 - [ローカルLLM 同時リクエスト測定](tools/llm-concurrency-bench/README.md)。手元の LLM サーバへ同時リクエストを送る Python のキットです。図は、その実行の数値だけから描きます。
 
 ## GitHub Pages
 
-ワークフローは `.github/workflows/pages.yml` です。`main` への push で、各 Web デモをビルドし、静的 HTML をコピーし、ギャラリーを足して `dist` を公開します。
+ワークフローは `.github/workflows/pages.yml` です。`main` への push で、Rust と wasm32 ターゲットと wasm-pack を入れてから、各 Web デモをビルドし、静的 HTML をコピーし、ギャラリーを足して `dist` を公開します。Rust を呼ぶのは `demos/js-wasm-bench` のビルドだけです。
 
 1. GitHub のリポジトリで **Settings → Pages**
 2. **Build and deployment** の **Source** を **GitHub Actions** にする
