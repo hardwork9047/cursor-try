@@ -24,7 +24,7 @@ function post(message: WorkerOut) {
 }
 
 function u8View(): Uint8Array {
-  if (!memory) throw new Error("WASM のメモリがありません");
+  if (!memory) throw new Error("Rust（WebAssembly）のメモリがありません");
   return new Uint8Array(memory.buffer);
 }
 
@@ -269,7 +269,7 @@ self.onmessage = (event: MessageEvent<{ pixels: Uint8Array; width: number; heigh
   const { pixels, width, height } = event.data;
   void (async () => {
     try {
-      post({ type: "progress", label: "WebAssembly を読み込んでいます" });
+      post({ type: "progress", label: "Rust（WebAssembly）を読み込んでいます" });
       if (!memory) {
         const ready = await init();
         memory = ready.memory;

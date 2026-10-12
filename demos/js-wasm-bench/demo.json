@@ -1,8 +1,8 @@
 {
-  "title": "JS と WebAssembly の速度",
-  "description": "同じ画像処理、ラインのシミュレーション、センサ列の整列を、素の JavaScript と Rust の WebAssembly にやらせ、このブラウザで測った時間を並べます。",
-  "tags": ["WebAssembly", "Rust", "ベンチマーク"],
+  "title": "JavaScript と Rust の速度",
+  "description": "同じ画像処理、ラインのシミュレーション、センサ列の整列を、JavaScript と Rust（WebAssembly）にやらせます。Rust のコードは WebAssembly にコンパイルして、ブラウザの中で動かします。時間は、このブラウザで測ったものだけです。",
+  "tags": ["JavaScript", "Rust（WebAssembly）", "ベンチマーク"],
   "date": "2026-10-12",
-  "tech": "Vite + TypeScript / Rust + wasm-bindgen",
+  "tech": "JavaScript / Rust（WebAssembly）",
   "status": "ready"
 }

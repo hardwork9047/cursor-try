@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ITERATIONS, MAX_EDGE, MIN_AREA, N_JOBS, N_SENSORS, N_STATIONS, WARMUP } from "./params";
 import { renderShareCard } from "./shareCard";
-import { formatInt, formatMs, formatRatio, speedup } from "./stats";
+import { formatInt, formatMs, formatSpeedup } from "./stats";
 import type { BenchResult, Pair, WorkerOut } from "./types";
 
 type ReadyImage = { pixels: Uint8Array; width: number; height: number };
@@ -27,45 +27,56 @@ function Times({ pair }: { pair: Pair | null }) {
     return `最小 ${formatMs(summary.min)} / 最大 ${formatMs(summary.max)}`;
   };
   const ms = (summary: Pair["jsCompute"] | null) => (summary ? formatMs(summary.median) : "—");
+  const sentence = (js: number | undefined, rust: number | undefined) =>
+    pair && js !== undefined && rust !== undefined ? formatSpeedup(js, rust) : "—";
   return (
-    <table>
-      <thead>
-        <tr>
-          <th></th>
-          <th>計算だけ</th>
-          <th>コピー込み</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th>JavaScript</th>
-          <td>
-            <span className="num">{ms(pair?.jsCompute ?? null)}</span>
-            <span className="spread">{spread(pair?.jsCompute ?? null)}</span>
-          </td>
-          <td>
-            <span className="num">{ms(pair?.jsTransfer ?? null)}</span>
-            <span className="spread">{spread(pair?.jsTransfer ?? null)}</span>
-          </td>
-        </tr>
-        <tr>
-          <th>WebAssembly</th>
-          <td>
-            <span className="num">{ms(pair?.wasmCompute ?? null)}</span>
-            <span className="spread">{spread(pair?.wasmCompute ?? null)}</span>
-          </td>
-          <td>
-            <span className="num">{ms(pair?.wasmTransfer ?? null)}</span>
-            <span className="spread">{spread(pair?.wasmTransfer ?? null)}</span>
-          </td>
-        </tr>
-        <tr>
-          <th>JS ÷ WASM</th>
-          <td className="num">{pair ? formatRatio(speedup(pair.jsCompute.median, pair.wasmCompute.median)) : "—"}</td>
-          <td className="num">{pair ? formatRatio(speedup(pair.jsTransfer.median, pair.wasmTransfer.median)) : "—"}</td>
-        </tr>
-      </tbody>
-    </table>
+    <>
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>計算だけ</th>
+            <th>コピー込み</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr className="side-js">
+            <th>
+              <span className="side js">JavaScript</span>
+            </th>
+            <td>
+              <span className="num">{ms(pair?.jsCompute ?? null)}</span>
+              <span className="spread">{spread(pair?.jsCompute ?? null)}</span>
+            </td>
+            <td>
+              <span className="num">{ms(pair?.jsTransfer ?? null)}</span>
+              <span className="spread">{spread(pair?.jsTransfer ?? null)}</span>
+            </td>
+          </tr>
+          <tr className="side-rust">
+            <th>
+              <span className="side rust">Rust（WebAssembly）</span>
+            </th>
+            <td>
+              <span className="num">{ms(pair?.wasmCompute ?? null)}</span>
+              <span className="spread">{spread(pair?.wasmCompute ?? null)}</span>
+            </td>
+            <td>
+              <span className="num">{ms(pair?.wasmTransfer ?? null)}</span>
+              <span className="spread">{spread(pair?.wasmTransfer ?? null)}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p className="speedup">
+        <span className="speedup-kind">計算だけ</span>
+        <span className="speedup-text">{sentence(pair?.jsCompute.median, pair?.wasmCompute.median)}</span>
+      </p>
+      <p className="speedup">
+        <span className="speedup-kind">コピー込み</span>
+        <span className="speedup-text">{sentence(pair?.jsTransfer.median, pair?.wasmTransfer.median)}</span>
+      </p>
+    </>
   );
 }
 
@@ -192,14 +203,19 @@ export function App() {
     <>
       <div className="topbar">
         <a href="../">現場のブラウザ</a>
-        <span>JS / WASM</span>
+        <span>JavaScript / Rust（WebAssembly）</span>
       </div>
       <header className="mast">
         <div className="mast-inner">
           <p className="kicker">GENBA · 同じ仕事を両方で</p>
-          <h1>JS と WebAssembly の速度</h1>
+          <h1>JavaScript と Rust の速度</h1>
+          <p className="explain">Rust のコードは WebAssembly にコンパイルして、ブラウザの中で動かします。</p>
           <p className="lede">
-            外観検査、ラインの流れ、センサ列を、素の JavaScript と Rust の WebAssembly に同じ手順でやらせます。数字は、このブラウザで測ったものだけです。まだ測っていない欄は「—」です。
+            外観検査、ラインの流れ、センサ列を、素の JavaScript と Rust（WebAssembly）に同じ手順でやらせます。数字は、このブラウザで測ったものだけです。まだ測っていない欄は「—」です。
+          </p>
+          <p className="legend">
+            <span className="side js">JavaScript</span>
+            <span className="side rust">Rust（WebAssembly）</span>
           </p>
         </div>
       </header>
@@ -212,7 +228,7 @@ export function App() {
             <dd>{userAgent || "—"}</dd>
           </dl>
           <p>
-            ウォームアップ {WARMUP} 回は捨て、続く {ITERATIONS} 回の中央値と、最小・最大を出します。0 始まりの偶数回は JavaScript を先に、奇数回は WebAssembly を先に測ります。計算だけは作業バッファに入ったあとの処理です。コピー込みは、入力の複製、計算、結果の読み戻しまでです。WebAssembly の複製は線形メモリへのコピーです。処理は Web Worker の中なので、画面は動いたままです。1 より大きい倍率は、WASM の方が速いという意味です。
+            ウォームアップ {WARMUP} 回は捨て、続く {ITERATIONS} 回の中央値と、最小・最大を出します。0 始まりの偶数回は JavaScript を先に、奇数回は Rust（WebAssembly）を先に測ります。計算だけは作業バッファに入ったあとの処理です。コピー込みは、入力の複製、計算、結果の読み戻しまでです。Rust（WebAssembly）の複製は線形メモリへのコピーです。処理は Web Worker の中なので、画面は動いたままです。表の下の文は、測った中央値から作っています。
           </p>
         </section>
         <div className="actions">
@@ -238,12 +254,16 @@ export function App() {
               <figcaption>元画像</figcaption>
               <canvas ref={originalRef} />
             </figure>
-            <figure>
-              <figcaption>JavaScript</figcaption>
+            <figure className="js">
+              <figcaption>
+                <span className="side js">JavaScript</span>
+              </figcaption>
               <canvas ref={jsRef} />
             </figure>
-            <figure>
-              <figcaption>WebAssembly</figcaption>
+            <figure className="rust">
+              <figcaption>
+                <span className="side rust">Rust（WebAssembly）</span>
+              </figcaption>
               <canvas ref={wasmRef} />
             </figure>
           </div>
@@ -257,10 +277,10 @@ export function App() {
           <Match value={result ? result.image.match : null} />
           <ul className="facts">
             <li>
-              連結成分 JS <b>{result ? result.image.jsCount : "—"}</b>
+              <span className="side js">JavaScript</span> 連結成分 <b>{result ? result.image.jsCount : "—"}</b>
             </li>
             <li>
-              連結成分 WASM <b>{result ? result.image.wasmCount : "—"}</b>
+              <span className="side rust">Rust（WebAssembly）</span> 連結成分 <b>{result ? result.image.wasmCount : "—"}</b>
             </li>
           </ul>
           <Times pair={result?.image ?? null} />
@@ -274,22 +294,22 @@ export function App() {
           <Match value={result ? result.line.match : null} />
           <ul className="facts">
             <li>
-              完了時刻 JS <b>{formatInt(result ? result.line.jsMakespan : null)}</b>
+              <span className="side js">JavaScript</span> 完了時刻 <b>{formatInt(result ? result.line.jsMakespan : null)}</b>
             </li>
             <li>
-              完了時刻 WASM <b>{formatInt(result ? result.line.wasmMakespan : null)}</b>
+              <span className="side rust">Rust（WebAssembly）</span> 完了時刻 <b>{formatInt(result ? result.line.wasmMakespan : null)}</b>
             </li>
             <li>
-              リードタイム合計 JS <b>{formatInt(result ? result.line.jsLead : null)}</b>
+              <span className="side js">JavaScript</span> リードタイム合計 <b>{formatInt(result ? result.line.jsLead : null)}</b>
             </li>
             <li>
-              リードタイム合計 WASM <b>{formatInt(result ? result.line.wasmLead : null)}</b>
+              <span className="side rust">Rust（WebAssembly）</span> リードタイム合計 <b>{formatInt(result ? result.line.wasmLead : null)}</b>
             </li>
             <li>
-              最大待ち JS <b>{formatInt(result ? result.line.jsWait : null)}</b>
+              <span className="side js">JavaScript</span> 最大待ち <b>{formatInt(result ? result.line.jsWait : null)}</b>
             </li>
             <li>
-              最大待ち WASM <b>{formatInt(result ? result.line.wasmWait : null)}</b>
+              <span className="side rust">Rust（WebAssembly）</span> 最大待ち <b>{formatInt(result ? result.line.wasmWait : null)}</b>
             </li>
           </ul>
           <Times pair={result?.line ?? null} />
@@ -303,16 +323,16 @@ export function App() {
           <Match value={result ? result.sensors.match : null} />
           <ul className="facts">
             <li>
-              中央の値 JS <b>{result ? result.sensors.jsP50.toLocaleString("ja-JP") : "—"}</b>
+              <span className="side js">JavaScript</span> 中央の値 <b>{result ? result.sensors.jsP50.toLocaleString("ja-JP") : "—"}</b>
             </li>
             <li>
-              中央の値 WASM <b>{result ? result.sensors.wasmP50.toLocaleString("ja-JP") : "—"}</b>
+              <span className="side rust">Rust（WebAssembly）</span> 中央の値 <b>{result ? result.sensors.wasmP50.toLocaleString("ja-JP") : "—"}</b>
             </li>
             <li>
-              95% 点 JS <b>{result ? result.sensors.jsP95.toLocaleString("ja-JP") : "—"}</b>
+              <span className="side js">JavaScript</span> 95% 点 <b>{result ? result.sensors.jsP95.toLocaleString("ja-JP") : "—"}</b>
             </li>
             <li>
-              95% 点 WASM <b>{result ? result.sensors.wasmP95.toLocaleString("ja-JP") : "—"}</b>
+              <span className="side rust">Rust（WebAssembly）</span> 95% 点 <b>{result ? result.sensors.wasmP95.toLocaleString("ja-JP") : "—"}</b>
             </li>
           </ul>
           <Times pair={result?.sensors ?? null} />

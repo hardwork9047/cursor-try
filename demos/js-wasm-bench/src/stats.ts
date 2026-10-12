@@ -15,8 +15,22 @@ export function summarize(values: number[]): Summary {
 }
 
 export function speedup(jsMs: number, wasmMs: number): number | null {
-  if (!(wasmMs > 0) || !Number.isFinite(jsMs) || !Number.isFinite(wasmMs)) return null;
+  if (!(wasmMs > 0) || !(jsMs > 0) || !Number.isFinite(jsMs) || !Number.isFinite(wasmMs)) return null;
   return jsMs / wasmMs;
+}
+
+function times(ratio: number): string {
+  if (ratio >= 100) return ratio.toFixed(0);
+  return ratio.toFixed(2);
+}
+
+/** Plain sentence from the two medians. 「—」 until both times are real. */
+export function formatSpeedup(jsMs: number, wasmMs: number): string {
+  const ratio = speedup(jsMs, wasmMs);
+  if (ratio === null) return "—";
+  if (ratio >= 1.005) return `Rustは JavaScript の ${times(ratio)} 倍速い`;
+  if (ratio <= 0.995) return `JavaScript は Rust の ${times(1 / ratio)} 倍速い`;
+  return "JavaScript と Rust は同じくらい";
 }
 
 export function formatMs(ms: number | null): string {
@@ -25,12 +39,6 @@ export function formatMs(ms: number | null): string {
   if (ms < 100) return `${ms.toFixed(1)} ms`;
   if (ms < 1000) return `${Math.round(ms)} ms`;
   return `${(ms / 1000).toFixed(2)} s`;
-}
-
-export function formatRatio(ratio: number | null): string {
-  if (ratio === null || !Number.isFinite(ratio)) return "—";
-  if (ratio >= 100) return `${ratio.toFixed(0)}×`;
-  return `${ratio.toFixed(2)}×`;
 }
 
 export function formatInt(value: bigint | null): string {

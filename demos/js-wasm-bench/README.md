@@ -1,6 +1,6 @@
-# JS と WebAssembly の速度
+# JavaScript と Rust の速度
 
-同じ仕事を、素の JavaScript と Rust（wasm-bindgen）にやらせ、開いたブラウザの中で時間を比べます。処理は Web Worker の中です。画面の数字は、その実行で測ったものだけです。見本の時間や、前の実行の再生はありません。まだ測っていない欄は「—」です。
+同じ仕事を、素の JavaScript と Rust（WebAssembly）にやらせ、開いたブラウザの中で時間を比べます。Rust のコードは WebAssembly にコンパイルして、ブラウザの中で動かします。処理は Web Worker の中です。画面の数字は、その実行で測ったものだけです。見本の時間や、前の実行の再生はありません。まだ測っていない欄は「—」です。
 
 公開パスは [/cursor-try/js-wasm-bench/](https://hardwork9047.github.io/cursor-try/js-wasm-bench/) です。
 
@@ -16,16 +16,16 @@
 
 ## 測り方
 
-ウォームアップ 1 回は捨てます。続く 5 回の中央値と、最小・最大を出します。0 始まりの偶数回は JavaScript を先に、奇数回は WebAssembly を先に測ります。
+ウォームアップ 1 回は捨てます。続く 5 回の中央値と、最小・最大を出します。0 始まりの偶数回は JavaScript を先に、奇数回は Rust（WebAssembly）を先に測ります。
 
 - **計算だけ**。作業バッファへ入れたあとの処理です。
-- **コピー込み**。入力を作業バッファへ複製し、計算し、結果を読み戻すまでです。WebAssembly では、線形メモリの確保とコピーが複製に入ります。
+- **コピー込み**。入力を作業バッファへ複製し、計算し、結果を読み戻すまでです。Rust（WebAssembly）では、線形メモリの確保とコピーが複製に入ります。
 
-倍率は JavaScript の中央値 ÷ WebAssembly の中央値です。1 より大きいとき、WebAssembly の方が速いです。
+表の下の文は、二つの中央値の比から作ります。Rust の方が短いときは「Rustは JavaScript の N 倍速い」、JavaScript の方が短いときはその逆です。まだ測っていないときは「—」です。N は、その実行の比だけです。
 
 論理コア数は `navigator.hardwareConcurrency`、ブラウザ名は `navigator.userAgent` です。共有カードの PNG は、測定が終わったあとだけ作ります。
 
-WASM は release（`opt-level = 3`、LTO）です。wasm-pack の wasm-opt は使いません。binaryen 108 は複数テーブルの export を入れ替え、externref の初期化が失敗するためです。
+Rust（WebAssembly）は release（`opt-level = 3`、LTO）です。wasm-pack の wasm-opt は使いません。binaryen 108 は複数テーブルの export を入れ替え、externref の初期化が失敗するためです。
 
 ## 写真
 

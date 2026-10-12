@@ -1,8 +1,19 @@
 import { escapeHtml } from "./html.mjs";
 import { SITE_BASE, SITE_URL } from "./site.mjs";
 
+function tagClass(tag) {
+  if (tag === "JavaScript") return " js";
+  if (tag === "Rust（WebAssembly）") return " rust";
+  return "";
+}
+
 function tags(item) {
-  return item.tags.map((tag) => `<li>${escapeHtml(tag)}</li>`).join("");
+  return item.tags.map((tag) => `<li class="tag${tagClass(tag)}">${escapeHtml(tag)}</li>`).join("");
+}
+
+function sideLegend(item) {
+  if (item.slug !== "js-wasm-bench") return "";
+  return `<p class="sides"><span class="side js">JavaScript</span><span class="side rust">Rust（WebAssembly）</span></p>`;
 }
 
 function demoCard(item) {
@@ -12,6 +23,7 @@ function demoCard(item) {
           <time datetime="${escapeHtml(item.date)}">${escapeHtml(item.date)}</time>
         </div>
         <h3>${escapeHtml(item.title)}</h3>
+        ${sideLegend(item)}
         <p>${escapeHtml(item.description)}</p>
         <p class="tech">${escapeHtml(item.tech)}</p>
         <ul class="tags">${tags(item)}</ul>
@@ -67,6 +79,7 @@ export function renderGallery(catalog) {
         --line: #2c2822;
         --muted: #5f594e;
         --yellow: #e2a30b;
+        --orange: #e25b12;
         --green: #1d4f3a;
         --sans: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
         --mono: "IBM Plex Mono", ui-monospace, monospace;
@@ -149,6 +162,12 @@ export function renderGallery(catalog) {
         font-size: 11px;
         letter-spacing: 0.04em;
       }
+      .tags li.js { background: var(--yellow); color: var(--ink); border-color: var(--yellow); font-weight: 700; }
+      .tags li.rust { background: var(--orange); color: #fffdf8; border-color: var(--orange); font-weight: 700; }
+      .sides { display: flex; flex-wrap: wrap; gap: 8px; }
+      .side { display: inline-block; padding: 4px 10px; font-size: 16px; font-weight: 700; line-height: 1.2; }
+      .side.js { background: var(--yellow); color: var(--ink); }
+      .side.rust { background: var(--orange); color: #fffdf8; }
       .actions { display: flex; gap: 14px; align-items: center; margin-top: auto; padding-top: 8px; }
       .go { font-weight: 700; font-size: 13px; }
       .empty { margin: 0; color: var(--muted); }
