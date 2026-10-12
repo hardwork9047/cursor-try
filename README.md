@@ -13,6 +13,7 @@ Junta の小さなデモを、同じ GitHub Pages に並べる場所です。Web
 | YOLO26 ブラウザ検出 | [`demos/yolo/`](demos/yolo/) | [/cursor-try/yolo/](https://hardwork9047.github.io/cursor-try/yolo/) |
 | Voxel Pagoda Garden | [`demos/pagoda-garden/`](demos/pagoda-garden/) | [/cursor-try/pagoda-garden/](https://hardwork9047.github.io/cursor-try/pagoda-garden/) |
 | JavaScript と Rust の速度 | [`demos/js-wasm-bench/`](demos/js-wasm-bench/) | [/cursor-try/js-wasm-bench/](https://hardwork9047.github.io/cursor-try/js-wasm-bench/) |
+| 一枚の写真から奥行き | [`demos/mono-depth/`](demos/mono-depth/) | [/cursor-try/mono-depth/](https://hardwork9047.github.io/cursor-try/mono-depth/) |
 | ローカルLLM 同時リクエスト測定 | [`tools/llm-concurrency-bench/`](tools/llm-concurrency-bench/) | Pages には載せず、カードから README とソースへ |
 
 ギャラリーのカードは、各フォルダの `demo.json` / `tool.json` から作ります。手で一覧を書き足す必要はありません。
@@ -53,12 +54,13 @@ npm run serve    # http://127.0.0.1:4173/cursor-try/
 
 `npm run serve` は、GitHub Pages と同じく成果物を `/cursor-try/` の下に出します。ヘッダは Pages と同様、サーバ側では COOP / COEP を付けません。必要なデモは自分の service worker で足します。
 
-一つのデモだけ触るときは、そのフォルダで `npm ci` して `npm run dev` です。LLM はポート 5173、YOLO は 5174 です。
+一つのデモだけ触るときは、そのフォルダで `npm ci` して `npm run dev` です。LLM はポート 5173、YOLO は 5174、奥行きは 5176 です。
 
 ```text
 http://127.0.0.1:5173/cursor-try/llm/
 http://127.0.0.1:5174/cursor-try/yolo/
 http://127.0.0.1:5175/cursor-try/js-wasm-bench/
+http://127.0.0.1:5176/cursor-try/mono-depth/
 ```
 
 ## 置いてあるもの
@@ -69,6 +71,7 @@ http://127.0.0.1:5175/cursor-try/js-wasm-bench/
 - [YOLO26 ブラウザ検出](demos/yolo/README.md)。YOLO26 と倉庫向け YOLOE-26。重みは **AGPL-3.0** です。サンプル画像のクレジットもそこにあります。
 - [Voxel Pagoda Garden](demos/pagoda-garden/README.md)。単一 HTML。`index.html` は Grok 4.7 の一発出力で、バイト列は変えていません。
 - [JavaScript と Rust の速度](demos/js-wasm-bench/README.md)。同じ仕事を JavaScript と Rust（WebAssembly）で測ります。ビルドに Rust と wasm-pack が要ります。
+- [一枚の写真から奥行き](demos/mono-depth/README.md)。Depth Anything V2 Small（Apache-2.0）をブラウザで動かします。ビルドが ONNX を取得します。
 - [ローカルLLM 同時リクエスト測定](tools/llm-concurrency-bench/README.md)。手元の LLM サーバへ同時リクエストを送る Python のキットです。図は、その実行の数値だけから描きます。
 
 ## GitHub Pages
