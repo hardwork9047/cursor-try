@@ -1,0 +1,13 @@
+---
+description: デモの置き方。追加や修正の前に従う。
+alwaysApply: true
+---
+
+作業前に AGENTS.md を読む。UI と README は日本語。
+
+- Web デモは `demos/<slug>/`、CLI は `tools/<slug>/`。追加は `npm run new-demo -- <slug>` または `npm run new-tool -- <slug>` から始める。
+- 他のデモのファイルは変えない。`demos/pagoda-garden/index.html` はバイト単位で固定。
+- 依存はそのデモの package.json だけ。ルートには足さない。
+- 公開パスは `/cursor-try/<slug>/`。ギャラリーは demo.json / tool.json から生成する。
+- 測っていない数値、見本、台本、再生用の結果を、画面にも README にも置かない。未測定は「—」。
+- 終える前にルートで `npm run build` が通ること。一つの失敗で公開全体が止まる。

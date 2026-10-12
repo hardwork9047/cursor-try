@@ -1,0 +1,8 @@
+{
+  "title": "YOLO26 ブラウザ検出",
+  "description": "Ultralytics YOLO26 と倉庫向け YOLOE-26 をブラウザで動かし、検出・計数・人とフォークリフトの接近を、その場の推論だけで出す。",
+  "tags": ["ONNX Runtime Web", "WebGPU", "物体検出"],
+  "date": "2026-10-11",
+  "tech": "Vite + React + TypeScript / YOLO26 + YOLOE-26（AGPL-3.0）",
+  "status": "ready"
+}

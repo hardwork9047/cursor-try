@@ -1,0 +1,12 @@
+{
+  "name": "cursor-try",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-site.mjs",
+    "serve": "node scripts/serve-site.mjs",
+    "new-demo": "node scripts/new-demo.mjs",
+    "new-tool": "node scripts/new-tool.mjs"
+  }
+}

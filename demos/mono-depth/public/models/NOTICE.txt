@@ -1,0 +1,16 @@
+Depth Anything V2 Small
+
+Lihe Yang, Bingyi Kang, Zilong Huang, Zhen Zhao, Xiaogang Xu, Jiashi Feng, Hengshuang Zhao.
+Depth Anything V2. NeurIPS 2024. arXiv:2406.09414
+https://github.com/DepthAnything/Depth-Anything-V2
+
+The Small checkpoint (24.8M parameters) is Apache-2.0.
+Base, Large, and Giant are CC-BY-NC-4.0 and are not used here.
+
+ONNX weights: onnx-community/depth-anything-v2-small
+Revision: 64fe43eba7f8a384b02fe3fadaa26cbba35548d8
+File: onnx/model_fp16.onnx
+SHA-256: 2df6223f206b5164e21f664ace61dabeb9bb6a49b8b5a3e00510b4807d0f5b04
+
+The Apache-2.0 text is LICENSE-APACHE-2.0.txt in this folder.
+The build downloads the weights. They are not committed.

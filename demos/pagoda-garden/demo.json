@@ -1,0 +1,8 @@
+{
+  "title": "Voxel Pagoda Garden",
+  "description": "一枚の HTML に収めた voxel の塔と庭。Three.js は CDN から読みます。index.html は Grok 4.7 の一発出力のままです。",
+  "tags": ["Three.js", "静的HTML", "voxel"],
+  "date": "2026-10-11",
+  "tech": "単一 HTML / Three.js r128 / Grok 4.7",
+  "status": "ready"
+}

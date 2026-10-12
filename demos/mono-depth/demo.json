@@ -1,0 +1,8 @@
+{
+  "title": "一枚の写真から奥行き",
+  "description": "Depth Anything V2 Small で、一枚の画像から相対的な奥行きをブラウザの中で推定します。メートルではなく、その実行で計算した相対値です。",
+  "tags": ["奥行き", "ONNX", "WebGPU"],
+  "date": "2026-10-12",
+  "tech": "ONNX Runtime Web / Depth Anything V2 Small",
+  "status": "ready"
+}

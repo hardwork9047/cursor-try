@@ -1,0 +1,98 @@
+export const COCO_NAMES = [
+  "人",
+  "自転車",
+  "車",
+  "バイク",
+  "飛行機",
+  "バス",
+  "電車",
+  "トラック",
+  "船",
+  "信号",
+  "消火栓",
+  "止まれ",
+  "パーキングメーター",
+  "ベンチ",
+  "鳥",
+  "猫",
+  "犬",
+  "馬",
+  "羊",
+  "牛",
+  "ゾウ",
+  "クマ",
+  "シマウマ",
+  "キリン",
+  "リュック",
+  "傘",
+  "かばん",
+  "ネクタイ",
+  "スーツケース",
+  "フリスビー",
+  "スキー",
+  "スノーボード",
+  "ボール",
+  "たこ",
+  "バット",
+  "グローブ",
+  "スケートボード",
+  "サーフボード",
+  "ラケット",
+  "びん",
+  "ワイングラス",
+  "カップ",
+  "フォーク",
+  "ナイフ",
+  "スプーン",
+  "ボウル",
+  "バナナ",
+  "りんご",
+  "サンドイッチ",
+  "オレンジ",
+  "ブロッコリー",
+  "にんじん",
+  "ホットドッグ",
+  "ピザ",
+  "ドーナツ",
+  "ケーキ",
+  "椅子",
+  "ソファ",
+  "植木",
+  "ベッド",
+  "食卓",
+  "トイレ",
+  "テレビ",
+  "ノートPC",
+  "マウス",
+  "リモコン",
+  "キーボード",
+  "携帯電話",
+  "電子レンジ",
+  "オーブン",
+  "トースター",
+  "シンク",
+  "冷蔵庫",
+  "本",
+  "時計",
+  "花瓶",
+  "はさみ",
+  "ぬいぐるみ",
+  "ドライヤー",
+  "歯ブラシ",
+] as const;
+
+export const COCO_CLASS_COUNT: 80 = COCO_NAMES.length;
+
+export function className(id: number): string {
+  return COCO_NAMES[id] ?? `分類${id}`;
+}
+
+/** Baked YOLOE-26 prompts: forklift, pallet, cardboard box, person. */
+export const WAREHOUSE_NAMES = ["フォークリフト", "パレット", "段ボール", "人"] as const;
+
+export const WAREHOUSE_FORKLIFT = 0;
+export const WAREHOUSE_PERSON = 3;
+
+export function warehouseName(id: number): string {
+  return WAREHOUSE_NAMES[id] ?? `分類${id}`;
+}

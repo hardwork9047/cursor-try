@@ -1,0 +1,9 @@
+export const MODEL_NAME = "Depth Anything V2 Small";
+export const MODEL_PARAMS = "24.8M";
+export const MODEL_LICENSE = "Apache-2.0";
+export const MODEL_REVISION = "64fe43eba7f8a384b02fe3fadaa26cbba35548d8";
+export const MODEL_FILE = "models/depth-anything-v2-small-fp16.onnx";
+export const PAPER_URL = "https://arxiv.org/abs/2406.09414";
+export const WEIGHTS_URL = `https://huggingface.co/onnx-community/depth-anything-v2-small/tree/${MODEL_REVISION}`;
+export const PAGE_URL = "https://hardwork9047.github.io/cursor-try/mono-depth/";
+export const INPUT_EDGE = 518;
