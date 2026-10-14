@@ -1,0 +1,16 @@
+export const MODEL_ID = "onnx-community/whisper-base";
+export const MODEL_REVISION = "1846881b6b3a3024392c1eea3ad983695bc23925";
+export const MODEL_NAME = "Whisper base";
+export const UPSTREAM_ID = "openai/whisper-base";
+export const WEIGHTS_URL = `https://huggingface.co/${MODEL_ID}/tree/${MODEL_REVISION}`;
+export const UPSTREAM_URL = `https://huggingface.co/${UPSTREAM_ID}`;
+export const CODE_URL = "https://github.com/openai/whisper";
+export const PAPER_URL = "https://arxiv.org/abs/2212.04356";
+export const RUNTIME_NAME = "@huggingface/transformers";
+export const RUNTIME_VERSION = "4.3.1";
+export const RUNTIME_URL = "https://github.com/huggingface/transformers.js";
+export const PAGE_URL = "https://hardwork9047.github.io/cursor-try/whisper-voice/";
+export const SAMPLE_RATE = 16000;
+export const MAX_AUDIO_SEC = 300;
+export const CHUNK_SEC = 30;
+export const STRIDE_SEC = 5;

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>口頭の報告を文字にする</title>
+    <meta
+      name="description"
+      content="作業報告やヒヤリハットを、ブラウザの中だけで文字にします。音声はサーバへ送りません。"
+    />
+    <link rel="icon" href="%BASE_URL%favicon.svg" type="image/svg+xml" />
+    <script>
+      window.coi = {
+        coepCredentialless: function () {
+          return true;
+        },
+        quiet: true,
+      };
+    </script>
+    <script src="%BASE_URL%coi-serviceworker.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
