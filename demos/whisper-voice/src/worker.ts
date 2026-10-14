@@ -36,8 +36,14 @@ function post(message: WorkerOut) {
   self.postMessage(message);
 }
 
-function hasWebGpu(): boolean {
-  return typeof navigator !== "undefined" && "gpu" in navigator && Boolean(navigator.gpu);
+async function canUseWebGpu(): Promise<boolean> {
+  const gpu = (navigator as Navigator & { gpu?: { requestAdapter: () => Promise<unknown> } }).gpu;
+  if (!gpu) return false;
+  try {
+    return Boolean(await gpu.requestAdapter());
+  } catch {
+    return false;
+  }
 }
 
 function fileLabel(file: string | undefined): string {
@@ -119,12 +125,12 @@ async function loadAttempt(attempt: Attempt, note: string) {
 
 async function ensureModel(allowWebGpu: boolean, because: "first" | "infer") {
   if (transcriber) return;
-  const canTryWebGpu = allowWebGpu && hasWebGpu();
+  const canTryWebGpu = allowWebGpu && (await canUseWebGpu());
   const attempts: Attempt[] = [];
   if (canTryWebGpu) attempts.push(WEBGPU);
   attempts.push(WASM_Q8, WASM_FP32);
   let webGpuFailed = false;
-  let last: unknown;
+  const failures: string[] = [];
   for (const attempt of attempts) {
     try {
       let note = "";
@@ -134,17 +140,19 @@ async function ensureModel(allowWebGpu: boolean, because: "first" | "infer") {
             ? "WebGPU の文字起こしに失敗したので、WASM で読み直しました。読込時間は、成功した WASM の分だけです。"
             : "WebGPU では用意できなかったので、WASM で読み直しました。読込時間は、成功した WASM の分だけです。";
       } else if (attempt.device === "wasm" && !canTryWebGpu) {
-        note = "このワーカーからは WebGPU を使えないので、WASM です。";
+        note = "このワーカーからは WebGPU のアダプタを取れないので、WASM です。";
       }
+      post({ type: "progress", text: attempt.device === "webgpu" ? "WebGPU で用意しています" : "WASM で用意しています" });
       await loadAttempt(attempt, note);
       return;
     } catch (error) {
-      last = error;
+      const message = error instanceof Error ? error.message : "モデルを用意できません";
+      failures.push(`${attempt.device === "webgpu" ? "WebGPU" : "WASM"}: ${message}`);
       if (attempt.device === "webgpu") webGpuFailed = true;
       await disposeCurrent();
     }
   }
-  throw last instanceof Error ? last : new Error("モデルを用意できません");
+  throw new Error(failures.join("\n") || "モデルを用意できません");
 }
 
 function textOf(output: unknown): string {
