@@ -1,0 +1,8 @@
+{
+  "title": "口頭の報告を文字にする",
+  "description": "作業報告やヒヤリハットを、開いたブラウザの中だけで文字にします。音声はサーバへ送りません。数字は、そのブラウザが測ったものだけです。",
+  "tags": ["音声", "Whisper", "WebGPU"],
+  "date": "2026-10-14",
+  "tech": "Vite + React + TypeScript / Transformers.js / Whisper base",
+  "status": "ready"
+}
