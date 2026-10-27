@@ -1,0 +1,8 @@
+{
+  "title": "TACT タクト監視卓",
+  "description": "工場のタクト監視を模したHUD。HTML-in-Canvas と WebGPU があるときはパネルをキャンバスに描いて歪ませ、無いときは DOM に戻す。工程の数字は演出で、FPS とフレーム時間だけをその場で測る。",
+  "tags": ["WebGPU", "HTML-in-Canvas", "HUD"],
+  "date": "2026-10-27",
+  "tech": "HTML-in-Canvas, WebGPU, Vite, React, TypeScript",
+  "status": "ready"
+}
